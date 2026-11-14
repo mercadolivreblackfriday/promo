@@ -1,19 +1,59 @@
-# Redirecionamento da raiz para a pré-sell anti-bloqueio
-/ /anti/ 302
+# ====================================================================
+# Redirecionamento da Raiz para a Pré-sell dentro de /promo/anti
+# ====================================================================
+/ /promo/anti/ 302
+/promo /promo/anti/ 302
+/promo/ /promo/anti/ 302
 
-# Redirecionamentos de API para Netlify Serverless Functions
-/jbl/api/gerar-pix.php /.netlify/functions/gerar-pix 200
+# Redirecionamentos amigáveis sem trailing slash
+/promo/anti /promo/anti/ 301
+/promo/jbl /promo/jbl/ 301
+/promo/roleta /promo/roleta/ 301
+
+# Compatibilidade com rotas sem /promo/ (redireciona para a versão /promo/)
+/anti /promo/anti/ 301
+/anti/* /promo/anti/:splat 301
+/jbl /promo/jbl/ 301
+/jbl/* /promo/jbl/:splat 301
+/roleta /promo/roleta/ 301
+/roleta/* /promo/roleta/:splat 301
+
+# ====================================================================
+# APIs e Netlify Serverless Functions
+# ====================================================================
+/promo/api/gerar-pix.php /.netlify/functions/gerar-pix 200
+/promo/jbl/api/gerar-pix.php /.netlify/functions/gerar-pix 200
 /api/gerar-pix.php /.netlify/functions/gerar-pix 200
-/jbl/api/status-pix.php /.netlify/functions/status-pix 200
+/jbl/api/gerar-pix.php /.netlify/functions/gerar-pix 200
+
+/promo/api/status-pix.php /.netlify/functions/status-pix 200
+/promo/jbl/api/status-pix.php /.netlify/functions/status-pix 200
 /api/status-pix.php /.netlify/functions/status-pix 200
-/jbl/api/tiktok-event /.netlify/functions/tiktok-event 200
-/api/tiktok-event /.netlify/functions/tiktok-event 200
+/jbl/api/status-pix.php /.netlify/functions/status-pix 200
+
+/promo/api/tracking /.netlify/functions/tracking 200
 /api/tracking /.netlify/functions/tracking 200
 
-# Rotas de Rastreio amigável
-/rastreio/* /rastreio/index.html 200
-/rastreio /rastreio/index.html 200
+/promo/api/analytics /.netlify/functions/analytics 200
+/api/analytics /.netlify/functions/analytics 200
 
-# Painel Administrativo
-/admin/* /admin/index.html 200
-/admin /admin/index.html 200
+/promo/api/tiktok-event /.netlify/functions/tiktok-event 200
+/promo/jbl/api/tiktok-event /.netlify/functions/tiktok-event 200
+/api/tiktok-event /.netlify/functions/tiktok-event 200
+/jbl/api/tiktok-event /.netlify/functions/tiktok-event 200
+
+# ====================================================================
+# Rastreamento de Encomendas (/promo/rastreio/:codigo)
+# ====================================================================
+/promo/rastreio/* /promo/rastreio/index.html 200
+/promo/rastreio /promo/rastreio/index.html 200
+/rastreio/* /promo/rastreio/index.html 200
+/rastreio /promo/rastreio/index.html 200
+
+# ====================================================================
+# Painel Administrativo (/promo/admin/)
+# ====================================================================
+/promo/admin/* /promo/admin/index.html 200
+/promo/admin /promo/admin/index.html 200
+/admin/* /promo/admin/index.html 200
+/admin /promo/admin/index.html 200

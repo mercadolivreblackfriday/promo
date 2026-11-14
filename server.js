@@ -25,8 +25,8 @@ function loadEnv() {
 }
 
 const ENV = loadEnv();
-const PINGUPAG_SECRET_KEY = process.env.PINGUPAG_SECRET_KEY || ENV.PINGUPAG_SECRET_KEY || 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
-const PINGUPAG_STORE_ID = process.env.PINGUPAG_STORE_ID || ENV.PINGUPAG_STORE_ID || '274';
+const LULAPAY_TOKEN = process.env.LULAPAY_TOKEN || ENV.LULAPAY_TOKEN || 'gwk_c25fff532aaa9ca37b2187ea884c991a2b6114d7ca6b3125';
+const LULAPAY_STORE_ID = process.env.LULAPAY_STORE_ID || ENV.LULAPAY_STORE_ID || '274';
 const TIKTOK_PIXEL_ID = process.env.TIKTOK_PIXEL_ID || ENV.TIKTOK_PIXEL_ID || 'DBQKBH3C77U6JJ8MCCKG';
 const TIKTOK_ACCESS_TOKEN = process.env.TIKTOK_ACCESS_TOKEN || ENV.TIKTOK_ACCESS_TOKEN || '492cf0afdd40b146b8e2f8d9004c563416906fa2';
 const PORT = process.env.PORT || ENV.PORT || 8080;
@@ -64,7 +64,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 1. Endpoint para criar PIX na PinguPag
+  // 1. Endpoint para criar PIX na LulaPay
   if (pathname.includes('/api/gerar-pix.php') && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -73,6 +73,7 @@ const server = http.createServer((req, res) => {
         console.log('[GERAR PIX] Body recebido:', body);
         const input = JSON.parse(body || '{}');
         const priceCents = Number(input.price_cents || 6990);
+        const amountBrl = Number((priceCents / 100).toFixed(2));
         const customer = input.customer || {};
 
         function isValidCpf(c) {
@@ -88,88 +89,92 @@ const server = http.createServer((req, res) => {
           if (r === 10 || r === 11) r = 0;
           return r === parseInt(c.substring(10, 11), 10);
         }
-        let rawCpf = (customer.cpf || customer.document || '').replace(/\D/g, '');
-        const cpfDigits = isValidCpf(rawCpf) ? rawCpf : '05481744180';
-        const phoneDigits = (customer.phone || '11999999999').replace(/\D/g, '');
-        const refId = 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+        let rawCpf = (customer.cpf || customer.document || input.cpf_pagador || '').replace(/\D/g, '');
+        const cpfDigits = isValidCpf(rawCpf) ? rawCpf : '52998224725';
+        let phoneDigits = (customer.phone || input.telefone_pagador || '11999998888').replace(/\D/g, '');
+        if (phoneDigits.length < 10) phoneDigits = '11999998888';
 
-        const tracking = input.tracking || {};
-        const utmObj = {
-          utm_source: input.utm_source || tracking.utm_source || '',
-          utm_medium: input.utm_medium || tracking.utm_medium || '',
-          utm_campaign: input.utm_campaign || tracking.utm_campaign || '',
-          utm_content: input.utm_content || tracking.utm_content || '',
-          utm_term: input.utm_term || tracking.utm_term || '',
-          src: input.src || tracking.src || '',
-          sck: input.sck || tracking.sck || ''
-        };
+        const customerName = (customer.name || input.nome_pagador || 'Cliente Mercado Livre').trim() || 'Cliente Mercado Livre';
+        const customerEmail = (customer.email || input.email_pagador || 'contato@cliente.com').trim() || 'contato@cliente.com';
+        const description = (input.produto || input.description || 'Pedido Mercado Livre').substring(0, 140);
+        const externalId = 'ord-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
 
-        const pinguPayload = JSON.stringify({
-          amount: priceCents,
-          description: input.produto || input.description || 'Produto Mercado Livre',
-          reference: refId,
-          source: 'api_externa',
-          customer: {
-            name: customer.name || 'Cliente Mercado Livre',
-            email: customer.email || 'contato@cliente.com',
-            phone: phoneDigits,
-            document: cpfDigits
-          },
-          tracking: utmObj
+        const lulaPayload = JSON.stringify({
+          amount: amountBrl,
+          description: description,
+          external_id: externalId,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: phoneDigits,
+          customer_document: cpfDigits
         });
 
-        console.log('[GERAR PIX] Enviando para PinguPag:', pinguPayload);
+        console.log('[GERAR PIX] Enviando para LulaPay:', lulaPayload);
 
-        const pinguReq = https.request({
-          hostname: 'app.pingupag.com',
-          path: '/gateway/v1/transaction',
+        const lulaReq = https.request({
+          hostname: 'lulapay.onrender.com',
+          path: '/api/v1/cobranca.php',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-API-Key': PINGUPAG_SECRET_KEY,
-            'Content-Length': Buffer.byteLength(pinguPayload)
+            'Authorization': 'Bearer ' + LULAPAY_TOKEN,
+            'Content-Length': Buffer.byteLength(lulaPayload)
           }
-        }, pinguRes => {
-          let pinguData = '';
-          pinguRes.on('data', chunk => pinguData += chunk);
-          pinguRes.on('end', () => {
-            console.log('[GERAR PIX] Resposta PinguPag HTTP', pinguRes.statusCode, ':', pinguData);
+        }, lulaRes => {
+          let lulaData = '';
+          lulaRes.on('data', chunk => lulaData += chunk);
+          lulaRes.on('end', () => {
+            console.log('[GERAR PIX] Resposta LulaPay HTTP', lulaRes.statusCode, ':', lulaData);
             try {
-              const parsed = JSON.parse(pinguData);
-              if (pinguRes.statusCode >= 200 && pinguRes.statusCode < 300 && (parsed.status === 'success' || parsed.qr_code)) {
+              const parsed = JSON.parse(lulaData);
+              if ((lulaRes.statusCode === 200 || lulaRes.statusCode === 201) && (parsed.pix_code || parsed.id)) {
+                const pixCodeStr = parsed.pix_code || '';
+                const txid = String(parsed.id || externalId);
+                const qrBase64 = parsed.qr_image || '';
+                const qrUrl = pixCodeStr ? ('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(pixCodeStr)) : '';
+
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                   success: true,
-                  pixCode: parsed.qr_code || '',
-                  qrCode: parsed.qr_code || '',
-                  qr_code: parsed.qr_code || '',
-                  qr_code_base64: parsed.qr_code_base64 || '',
-                  pix_copia_e_cola: parsed.qr_code || '',
-                  transacao_id: String(parsed.transaction_id || parsed.id || refId),
-                  id: String(parsed.transaction_id || parsed.id || refId),
+                  transacao_id: txid,
+                  id: txid,
+                  txid: txid,
+                  external_id: parsed.external_id || externalId,
+                  pixCode: pixCodeStr,
+                  qrCode: pixCodeStr,
+                  pix_code: pixCodeStr,
+                  qr_code: pixCodeStr,
+                  copia_e_cola: pixCodeStr,
+                  pix_copia_e_cola: pixCodeStr,
+                  qrcode: pixCodeStr,
+                  base64QrCode: qrBase64,
+                  qr_code_base64: qrBase64,
+                  qr_code_url: qrUrl,
+                  valor: amountBrl.toFixed(2),
+                  valor_centavos: priceCents,
                   status: 'PENDING'
                 }));
               } else {
-                const errMsg = parsed.message || parsed.error || 'Erro ao gerar Pix na PinguPag';
-                console.error('[GERAR PIX] Falha na PinguPag:', errMsg, parsed);
-                res.writeHead(pinguRes.statusCode || 400, { 'Content-Type': 'application/json' });
+                const errMsg = parsed.error || parsed.message || 'Erro ao gerar Pix na LulaPay';
+                console.error('[GERAR PIX] Falha na LulaPay:', errMsg, parsed);
+                res.writeHead(lulaRes.statusCode || 400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: false, error: errMsg, raw: parsed }));
               }
             } catch (err) {
               res.writeHead(502, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: false, error: 'Erro ao processar resposta da PinguPag' }));
+              res.end(JSON.stringify({ success: false, error: 'Erro ao processar resposta da LulaPay' }));
             }
           });
         });
 
-        pinguReq.on('error', e => {
-          console.error('[GERAR PIX] Erro de rede com PinguPag:', e.message);
+        lulaReq.on('error', e => {
+          console.error('[GERAR PIX] Erro de rede com LulaPay:', e.message);
           res.writeHead(502, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: e.message }));
         });
 
-        pinguReq.write(pinguPayload);
-        pinguReq.end();
+        lulaReq.write(lulaPayload);
+        lulaReq.end();
       } catch (err) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: 'Payload JSON inválido' }));
@@ -178,7 +183,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 2. Endpoint para verificar status do PIX na PinguPag
+  // 2. Endpoint para verificar status do PIX na LulaPay
   if (pathname.includes('/api/status-pix.php') && req.method === 'GET') {
     const txid = parsedUrl.query.id;
     if (!txid) {
@@ -187,42 +192,47 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Consulta real de status na PinguPag
-    const queryPath = `/gateway/v1/query?action=get_transaction&id=${encodeURIComponent(txid)}`;
+    // Se estiver simulado localmente como pago
+    if (SIMULATED_PAID_TXIDS.has(txid)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, status: 'APPROVED', transacao_id: txid }));
+      return;
+    }
 
-    const pinguReq = https.request({
-      hostname: 'app.pingupag.com',
+    const param = (String(txid).startsWith('ord_')) ? ('id=' + encodeURIComponent(txid)) : ('external_id=' + encodeURIComponent(txid));
+    const queryPath = '/api/v1/cobranca.php?' + param;
+
+    const lulaReq = https.request({
+      hostname: 'lulapay.onrender.com',
       path: queryPath,
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'X-API-Key': PINGUPAG_SECRET_KEY
+        'Authorization': 'Bearer ' + LULAPAY_TOKEN
       }
-    }, pinguRes => {
-      let pinguData = '';
-      pinguRes.on('data', chunk => pinguData += chunk);
-      pinguRes.on('end', () => {
+    }, lulaRes => {
+      let lulaData = '';
+      lulaRes.on('data', chunk => lulaData += chunk);
+      lulaRes.on('end', () => {
         try {
-          const parsed = JSON.parse(pinguData);
-          const raw = String(parsed.status || (Array.isArray(parsed) && parsed[0] ? parsed[0].status : 'PENDING')).toUpperCase();
-          console.log(`[STATUS PIX] PinguPag retorno para transação ${txid}: status='${raw}' (HTTP ${pinguRes.statusCode})`);
-          const mapped = ['PAID', 'APPROVED', 'COMPLETED', 'SUCCEEDED', 'PAGO'].includes(raw) ? 'APPROVED' : 'PENDING';
+          const parsed = JSON.parse(lulaData);
+          const raw = String(parsed.status || 'pending').toLowerCase();
+          const mapped = (raw === 'paid' || raw === 'approved' || raw === 'completed' || raw === 'pago') ? 'APPROVED' : (raw === 'canceled' || raw === 'refunded' ? 'CANCELED' : 'PENDING');
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, status: mapped, transacao_id: txid }));
+          res.end(JSON.stringify({ success: true, status: mapped, transacao_id: txid, raw_status: raw }));
         } catch (err) {
-          console.warn(`[STATUS PIX] Falha no parse JSON de ${txid}, mantendo PENDING.`);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, status: 'PENDING', transacao_id: txid }));
         }
       });
     });
 
-    pinguReq.on('error', e => {
-      console.warn(`[STATUS PIX] Erro de rede na consulta de ${txid}: ${e.message}, mantendo PENDING.`);
+    lulaReq.on('error', e => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, status: 'PENDING', transacao_id: txid }));
     });
-    pinguReq.end();
+
+    lulaReq.end();
     return;
   }
 
@@ -422,6 +432,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Servidor Funil + PinguPag Gateway ativo na porta ${PORT}`);
-  console.log(`PinguPag Secret Key: ${PINGUPAG_SECRET_KEY ? PINGUPAG_SECRET_KEY.slice(0, 15) + '...' : 'NÃO DEFINIDA'}`);
+  console.log(`Servidor Funil + LulaPay Gateway ativo na porta ${PORT}`);
+  console.log(`LulaPay Secret Key: ${LULAPAY_TOKEN ? LULAPAY_TOKEN.slice(0, 15) + '...' : 'NÃO DEFINIDA'}`);
 });
