@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rastreamento de Pedido | Mercado Livre Envios</title>
+  <link rel="icon" href="/rastreio/images/favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Proxima+Nova:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --meli-yellow: #FFE600;
+      --meli-blue: #3483FA;
+      --meli-blue-hover: #2968C8;
+      --meli-green: #00A650;
+      --meli-gray-bg: #EBEBEB;
+      --meli-card-bg: #FFFFFF;
+      --meli-txt: #333333;
+      --meli-txt-light: #666666;
+      --meli-txt-sub: #999999;
+      --meli-border: #E6E6E6;
+      --meli-orange: #FF7733;
+      --meli-danger: #F23D4F;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Proxima Nova', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--meli-gray-bg); color: var(--meli-txt); min-height: 100vh; display: flex; flex-direction: column; }
+    
+    /* Top Header */
+    .hdr {
+      background-color: var(--meli-yellow);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 1px rgba(0,0,0,.1);
+    }
+    .hdr__logo img { height: 32px; width: auto; display: block; }
+    .hdr__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,.06);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #2D3277;
+    }
+
+    /* Main Container */
+    .container {
+      width: 100%;
+      max-width: 680px;
+      margin: 16px auto 30px;
+      padding: 0 16px;
+      flex: 1;
+    }
+
+    /* Search Box */
+    .search-card {
+      background: var(--meli-card-bg);
+      border-radius: 8px;
+      padding: 18px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      margin-bottom: 16px;
+    }
+    .search-card h1 { font-size: 18px; font-weight: 700; color: #111; margin-bottom: 12px; }
+    .search-form { display: flex; gap: 8px; }
+    .search-input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid #CCC;
+      border-radius: 6px;
+      font-size: 15px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: .5px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-input:focus { border-color: var(--meli-blue); }
+    .search-btn {
+      background: var(--meli-blue);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .search-btn:hover { background: var(--meli-blue-hover); }
+
+    /* Order Details Card */
+    .card {
+      background: var(--meli-card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+      margin-bottom: 16px;
+    }
+    
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    .status-banner--separating {
+      background: #E8F5E9;
+      border-left: 4px solid var(--meli-green);
+      color: #1B5E20;
+    }
+    .status-banner--delayed {
+      background: #FFF3E0;
+      border-left: 4px solid var(--meli-orange);
+      color: #E65100;
+    }
+    .status-banner--transit {
+      background: #E8F4FD;
+      border-left: 4px solid var(--meli-blue);
+      color: #1A4E8A;
+    }
+    .status-banner--out {
+      background: #E8F5E9;
+      border-left: 4px solid var(--meli-green);
+      color: #1B5E20;
+    }
+    .status-banner--attempt {
+      background: #FFF8E1;
+      border-left: 4px solid var(--meli-orange);
+      color: #B45309;
+    }
+    .status-banner__icon { font-size: 26px; flex-shrink: 0; }
+    .status-banner__title { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+    .status-banner__desc { font-size: 13px; line-height: 1.4; color: #444; }
+
+    /* Order Item Header */
+    .order-head {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--meli-border);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+    }
+    .order-head__code { font-size: 13px; color: var(--meli-txt-light); }
+    .order-head__code strong { color: #111; font-weight: 700; letter-spacing: .5px; }
+    .order-head__date { font-size: 13px; color: var(--meli-txt-sub); }
+
+    /* Items List */
+    .items-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+    .item-row { display: flex; gap: 14px; align-items: center; }
+    .item-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: 6px;
+      border: 1px solid var(--meli-border);
+      object-fit: contain;
+      padding: 4px;
+      background: #FAFAFA;
+      flex-shrink: 0;
+    }
+    .item-info { flex: 1; }
+    .item-title { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 4px; line-height: 1.3; }
+    .item-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--meli-green);
+      background: #E8F5E9;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .item-badge--prize {
+      color: #9C27B0;
+      background: #F3E5F5;
+    }
+
+    /* Timeline Stepper */
+    .timeline { position: relative; padding-left: 32px; margin-top: 24px; margin-bottom: 10px; }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      bottom: 8px;
+      left: 11px;
+      width: 2px;
+      background: #DDD;
+    }
+    .step { position: relative; margin-bottom: 24px; }
+    .step:last-child { margin-bottom: 0; }
+    .step__dot {
+      position: absolute;
+      left: -32px;
+      top: 2px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #FFF;
+      border: 3px solid #CCC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+    .step--done .step__dot {
+      background: var(--meli-green);
+      border-color: var(--meli-green);
+    }
+    .step--done .step__dot::after {
+      content: "✓";
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .step--current .step__dot {
+      background: var(--meli-blue);
+      border-color: #BBDEFB;
+      box-shadow: 0 0 0 4px rgba(52, 131, 250, .2);
+    }
+    .step--current-warning .step__dot {
+      background: var(--meli-orange);
+      border-color: #FFE0B2;
+      box-shadow: 0 0 0 4px rgba(255, 119, 51, .2);
+    }
+    .step--warning .step__dot {
+      background: #F59E0B;
+      border-color: #FDE68A;
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, .2);
+    }
+    .step--warning .step__dot::after {
+      content: "!";
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .step__title { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 2px; }
+    .step__time { font-size: 12px; color: var(--meli-txt-light); margin-bottom: 4px; }
+    .step__desc { font-size: 13px; color: #555; line-height: 1.4; }
+
+    /* Shipping Address Card */
+    .address-card {
+      border-top: 1px solid var(--meli-border);
+      padding-top: 16px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.5;
+    }
+    .address-card strong { color: #111; display: block; margin-bottom: 4px; font-size: 14px; }
+
+    /* Save Page / Share Link Box */
+    .save-page-box {
+      background: #F0F7FF;
+      border: 1.5px dashed #3483FA;
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .save-page-box__head {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .save-page-box__icon {
+      font-size: 22px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .save-page-box__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1A4E8A;
+      margin-bottom: 4px;
+    }
+    .save-page-box__sub {
+      font-size: 13px;
+      color: #2C4D75;
+      line-height: 1.45;
+    }
+    .save-page-box__highlight {
+      display: block;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: #E1EFFF;
+      border-left: 3px solid #3483FA;
+      border-radius: 4px;
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: #0E3E7A;
+    }
+    .save-page-box__action {
+      display: flex;
+      align-items: center;
+    }
+    .save-page-box__btn {
+      background: var(--meli-blue);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 6px;
+      padding: 11px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background .2s, transform .1s;
+    }
+    .save-page-box__btn:hover { background: var(--meli-blue-hover); }
+    .save-page-box__btn:active { transform: scale(.98); }
+    .save-page-box__btn.is-copied { background: var(--meli-green); }
+
+    /* Modal Popup Copiado com Sucesso */
+    .copy-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 16px;
+    }
+    .copy-modal[hidden] {
+      display: none;
+    }
+    .copy-modal__backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.55);
+      animation: fadeIn .2s ease;
+    }
+    .copy-modal__card {
+      position: relative;
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 24px 20px 20px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      animation: popIn .25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 2;
+    }
+    .copy-modal__icon {
+      width: 52px;
+      height: 52px;
+      background: #E8F5E9;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+    }
+    .copy-modal__title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111111;
+      margin-bottom: 8px;
+    }
+    .copy-modal__desc {
+      font-size: 14px;
+      color: #555555;
+      line-height: 1.45;
+      margin-bottom: 20px;
+    }
+    .copy-modal__btn {
+      width: 100%;
+      background: var(--meli-blue);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .copy-modal__btn:hover {
+      background: var(--meli-blue-hover);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Footer */
+    .ftr { text-align: center; padding: 20px; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+
+  <header class="hdr">
+    <a href="/jbl/" class="hdr__logo">
+      <img src="/rastreio/images/logo.webp" alt="Mercado Livre">
+    </a>
+    <span class="hdr__badge">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+      Mercado Envios Full
+    </span>
+  </header>
+
+  <main class="container">
+    <div class="search-card">
+      <h1>Rastrear Encomenda</h1>
+      <form class="search-form" onsubmit="event.preventDefault(); buscarRastreio();">
+        <input type="text" id="trackingCodeInput" class="search-input" placeholder="Digite seu código de rastreio (ex: ML123456789BR)" required>
+        <button type="submit" class="search-btn">Buscar</button>
+      </form>
+    </div>
+
+    <div id="resultArea" style="display: none;">
+      <!-- Content injected by JavaScript -->
+    </div>
+  </main>
+
+  <footer class="ftr">
+    <p>Mercado Livre © 1999-2026. Todos os direitos reservados.</p>
+    <p>Envios com rastreamento oficial Mercado Envios e Correios Brasil.</p>
+  </footer>
+
+  <!-- Modal Popup Copiado com Sucesso -->
+  <div id="copyModal" class="copy-modal" hidden role="dialog" aria-modal="true">
+    <div class="copy-modal__backdrop" onclick="fecharModalCopia()"></div>
+    <div class="copy-modal__card">
+      <div class="copy-modal__icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#00A650" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6L9 17l-5-5"/>
+        </svg>
+      </div>
+      <h3 class="copy-modal__title">Link copiado com sucesso!</h3>
+      <p class="copy-modal__desc">Esta página é específica da promoção e as consultas do código deverão ser sempre por ela. Guarde este link para verificar o status a hora que quiser!</p>
+      <button type="button" class="copy-modal__btn" onclick="fecharModalCopia()">OK, entendi</button>
+    </div>
+  </div>
+
+  <script>
+    function formatDate(d) {
+      const pad = n => String(n).padStart(2, '0');
+      return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' às ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    async function fetchServerTracking(code) {
+      try {
+        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const url = isLocalhost ? `/api/tracking?code=${encodeURIComponent(code)}` : `/.netlify/functions/tracking?code=${encodeURIComponent(code)}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.record) return data.record;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    async function syncTrackingToServer(record) {
+      try {
+        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const url = isLocalhost ? '/api/tracking' : '/.netlify/functions/tracking';
+        await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        });
+      } catch (_) {}
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
+    async function getTrackingInfo(code) {
+      if (!code) return null;
+      code = code.trim().toUpperCase();
+
+      // 1. Tenta carregar do servidor primeiro
+      let serverRecord = await fetchServerTracking(code);
+      if (serverRecord && serverRecord.code) {
+        try {
+          const all = JSON.parse(localStorage.getItem('ml_tracking_records') || '{}');
+          all[code] = serverRecord;
+          localStorage.setItem('ml_tracking_records', JSON.stringify(all));
+        } catch (_) {}
+        return serverRecord;
+      }
+
+      // 2. Tenta carregar do localStorage de pedidos salvos
+      let saved = null;
+      try {
+        const all = JSON.parse(localStorage.getItem('ml_tracking_records') || '{}');
+        saved = all[code];
+      } catch (_) {}
+
+      if (saved && saved.code) {
+        return saved;
+      }
+
+      // 3. Fallback estrito: só valida se bater com o CPF da compra confirmada neste navegador
+      try {
+        const segData = JSON.parse(localStorage.getItem('mlSeguroData') || '{}');
+        const rawCpf = String(segData.cpf || '').replace(/\D/g, '');
+        if (rawCpf) {
+          const cpfMap = JSON.parse(localStorage.getItem('ml_cpf_tracking_map') || '{}');
+          if (cpfMap[rawCpf] && cpfMap[rawCpf].toUpperCase() === code) {
+            const cartData = JSON.parse(localStorage.getItem('obrigado_cart') || '[]');
+            const prizeData = JSON.parse(localStorage.getItem('ml_prize_won') || 'null');
+            saved = {
+              code: code,
+              createdAt: Date.now(),
+              customer: segData,
+              cart: cartData,
+              prize: prizeData,
+              mainProduct: {
+                name: "Caixa de Som Bluetooth À Prova D'água JBL Boombox 4 Branca 210W",
+                image: "/rastreio/images/jbl_main.webp",
+                price: 69.90
+              }
+            };
+            const all = JSON.parse(localStorage.getItem('ml_tracking_records') || '{}');
+            all[code] = saved;
+            localStorage.setItem('ml_tracking_records', JSON.stringify(all));
+            syncTrackingToServer(saved);
+            return saved;
+          }
+        }
+      } catch (_) {}
+
+      // Se não encontrou no servidor nem no registro oficial: código NÃO existe!
+      return null;
+    }
+
+    function normalizeImgPath(src, defaultPrefix) {
+      if (!src) return '/rastreio/images/jbl_main.webp';
+      if (src.startsWith('http') || src.startsWith('/') || src.startsWith('data:')) return src;
+      if (src.startsWith('images/')) return (defaultPrefix || '/rastreio/') + src;
+      if (src.startsWith('img/')) return '/roleta/' + src;
+      return (defaultPrefix || '/rastreio/') + src.replace(/^\.?\//, '');
+    }
+
+    function abrirModalCopia() {
+      const modal = document.getElementById('copyModal');
+      if (modal) {
+        modal.hidden = false;
+      }
+    }
+
+    function fecharModalCopia() {
+      const modal = document.getElementById('copyModal');
+      if (modal) {
+        modal.hidden = true;
+      }
+    }
+
+    function copiarLinkRastreio(urlText, btnEl) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(urlText).then(() => {
+          mostrarCopiado(btnEl);
+          abrirModalCopia();
+        }).catch(() => {
+          fallbackCopy(urlText, btnEl);
+          abrirModalCopia();
+        });
+      } else {
+        fallbackCopy(urlText, btnEl);
+        abrirModalCopia();
+      }
+    }
+
+    function fallbackCopy(text, btnEl) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      mostrarCopiado(btnEl);
+    }
+
+    function mostrarCopiado(btnEl) {
+      if (!btnEl) return;
+      const orig = btnEl.innerHTML;
+      btnEl.classList.add('is-copied');
+      btnEl.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Link Copiado!
+      `;
+      setTimeout(() => {
+        btnEl.classList.remove('is-copied');
+        btnEl.innerHTML = orig;
+      }, 2500);
+    }
+
+    async function buscarRastreio(targetCode) {
+      const input = document.getElementById('trackingCodeInput');
+      const raw = (targetCode || input.value || '').trim();
+      if (!raw) return;
+
+      // Sanitiza removendo possíveis query strings ou barras
+      const code = raw.split('?')[0].split('/')[0].trim().toUpperCase();
+      input.value = code;
+
+      // Suporte a teste/preview de dias via query string (?dias=X ou ?days=X)
+      const currentQs = window.location.search;
+      const urlParams = new URLSearchParams(currentQs);
+      const forcedDays = parseFloat(urlParams.get('dias') || urlParams.get('days') || '');
+
+      const res = document.getElementById('resultArea');
+      res.innerHTML = '<div style="text-align:center; padding: 25px; color:#666;">Buscando informações do envio...</div>';
+      res.style.display = 'block';
+
+      const record = await getTrackingInfo(code);
+
+      // Se o código não existir nos pedidos cadastrados: exibe erro amigável e não gera nada!
+      if (!record) {
+        res.innerHTML = `
+          <div class="card" style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 46px; margin-bottom: 12px;">🔍</div>
+            <h3 style="font-size: 18px; font-weight: 700; color: #111; margin-bottom: 8px;">Código de rastreamento não encontrado</h3>
+            <p style="font-size: 14px; color: #666; max-width: 460px; margin: 0 auto 16px; line-height: 1.5;">
+              Não encontramos nenhum pacote vinculado ao código <strong>${escapeHtml(code)}</strong>.<br>
+              Verifique se digitou o código corretamente. Lembre-se que esta página é específica da promoção e aceita apenas códigos oficiais vinculados aos pedidos realizados.
+            </p>
+          </div>
+        `;
+        res.style.display = 'block';
+        return;
+      }
+
+      // Código válido: atualiza histórico e URL
+      try {
+        localStorage.setItem('ml_last_tracking_code', code);
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', '/rastreio/' + encodeURIComponent(code) + (currentQs || ''));
+        }
+      } catch (_) {}
+
+      const now = Date.now();
+      const created = record.createdAt || now;
+
+      const realElapsedDays = (now - created) / (1000 * 60 * 60 * 24);
+      const elapsedDays = !isNaN(forcedDays) ? forcedDays : realElapsedDays;
+
+      // Destino do comprador (cidade/UF)
+      const cust = record.customer || {};
+      const cidade = cust.localidade || cust.cidade || '';
+      const uf = cust.uf || cust.estado || '';
+      const localDestino = cidade ? (uf ? `${cidade} - ${uf}` : cidade) : 'sua cidade';
+
+      // Timestamps de eventos
+      const d1 = new Date(created);
+      const d2 = new Date(created + (2 * 60 * 60 * 1000));
+      const d3 = new Date(created + (3 * 24 * 60 * 60 * 1000) + (4 * 60 * 60 * 1000));
+      const d4 = new Date(created + (5 * 24 * 60 * 60 * 1000) + (3 * 60 * 60 * 1000));
+      const d5 = new Date(created + (7 * 24 * 60 * 60 * 1000) + (5 * 60 * 60 * 1000));
+      const d6 = new Date(created + (9 * 24 * 60 * 60 * 1000) + (1 * 60 * 60 * 1000));
+
+      // Itens comprados exatos
+      let itemsHtml = '';
+      if (Array.isArray(record.cart) && record.cart.length > 0) {
+        record.cart.forEach(item => {
+          const itemImg = normalizeImgPath(item.image, '/jbl/');
+          itemsHtml += `
+            <div class="item-row">
+              <img src="${itemImg}" alt="${item.name}" class="item-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+              <div class="item-info">
+                <h4 class="item-title">${item.name}</h4>
+                <span class="item-badge">${item.type === 'bump' ? 'Oferta Especial' : 'Pedido Principal'} • 1x • Frete Full</span>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        const main = record.mainProduct || {};
+        const mainImg = normalizeImgPath(main.image, '/rastreio/');
+        itemsHtml += `
+          <div class="item-row">
+            <img src="${mainImg}" alt="JBL Boombox 4" class="item-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+            <div class="item-info">
+              <h4 class="item-title">${main.name || "Caixa de Som Bluetooth À Prova D'água JBL Boombox 4 Branca 210W"}</h4>
+              <span class="item-badge">Pedido Principal • 1x • Frete Full</span>
+            </div>
+          </div>
+        `;
+      }
+
+      if (record.prize && record.prize.name) {
+        const prizeImg = normalizeImgPath(record.prize.image || record.prize.reelThumb, '/roleta/');
+        itemsHtml += `
+          <div class="item-row">
+            <img src="${prizeImg}" alt="${record.prize.name}" class="item-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+            <div class="item-info">
+              <h4 class="item-title">${record.prize.name}</h4>
+              <span class="item-badge item-badge--prize">🎁 Prêmio Roleta 10.10 Vinculado ao Pacote</span>
+            </div>
+          </div>
+        `;
+      }
+
+      const ender = cust.logradouro ? `${cust.logradouro}, ${cust.numero || 'S/N'}${cust.complemento ? ' - ' + cust.complemento : ''} - ${cust.bairro || ''}, ${cust.localidade || ''} - ${cust.uf || ''}` : 'Endereço informado no momento da compra';
+
+      const shareUrl = `${window.location.origin}/rastreio/${code}`;
+      const savePageHtml = `
+        <div class="save-page-box">
+          <div class="save-page-box__head">
+            <span class="save-page-box__icon">📌</span>
+            <div>
+              <div class="save-page-box__title">Guarde esta página para verificar o status a hora que quiser!</div>
+              <div class="save-page-box__sub">
+                Copie e salve o seu link exclusivo abaixo para acompanhar cada atualização da entrega do seu pedido nos próximos dias:
+                <span class="save-page-box__highlight">⚠️ <strong>Importante:</strong> Esta página é específica desta promoção e as consultas do código deverão ser realizadas sempre por ela.</span>
+              </div>
+            </div>
+          </div>
+          <div class="save-page-box__action">
+            <button type="button" class="save-page-box__btn" onclick="copiarLinkRastreio('${shareUrl}', this)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              Copiar Link
+            </button>
+          </div>
+        </div>
+      `;
+
+      let bannerHtml = '';
+      let timelineSteps = '';
+      let statusShort = 'Pedido sendo separado para entrega';
+
+      if (elapsedDays < 3) {
+        // --- FASE 1: 0 a 3 dias ---
+        statusShort = 'Pedido sendo separado para entrega';
+        bannerHtml = `
+          <div class="status-banner status-banner--separating">
+            <div class="status-banner__icon">📦</div>
+            <div>
+              <div class="status-banner__title">Pedido sendo separado para entrega</div>
+              <div class="status-banner__desc">Seu pacote está no centro de distribuição Full do Mercado Livre sendo embalado com prioridade para expedição.</div>
+            </div>
+          </div>
+        `;
+        timelineSteps = `
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pagamento Aprovado</div>
+            <div class="step__time">${formatDate(d1)}</div>
+            <div class="step__desc">Pagamento confirmado via Pix. O pedido e eventuais prêmios vinculados foram reunidos em um único pacote.</div>
+          </div>
+          <div class="step step--current">
+            <div class="step__dot"></div>
+            <div class="step__title">Pedido sendo separado para entrega</div>
+            <div class="step__time">${formatDate(d2)}</div>
+            <div class="step__desc">Mercadoria no Centro de Distribuição Cajamar - SP. Triagem e preparação da embalagem de segurança.</div>
+          </div>
+          <div class="step">
+            <div class="step__dot"></div>
+            <div class="step__title">A caminho do seu endereço</div>
+            <div class="step__time">Previsão estimada</div>
+            <div class="step__desc">Coleta pela transportadora expressa e início do transporte rodoviário.</div>
+          </div>
+        `;
+      } else if (elapsedDays < 5) {
+        // --- FASE 2: 3 a 5 dias (2 dias mostrando o erro operacional) ---
+        statusShort = 'Pendência na rota de entrega';
+        bannerHtml = `
+          <div class="status-banner status-banner--delayed">
+            <div class="status-banner__icon">⚠️</div>
+            <div>
+              <div class="status-banner__title">Houve uma pendência na rota de entrega</div>
+              <div class="status-banner__desc">Identificamos uma retenção logística operacional temporária. Nossa equipe de transporte já abriu protocolo prioritário e está resolvendo para entregar a sua encomenda o mais rápido possível.</div>
+            </div>
+          </div>
+        `;
+        timelineSteps = `
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pagamento Aprovado</div>
+            <div class="step__time">${formatDate(d1)}</div>
+            <div class="step__desc">Pagamento via Pix confirmado e pacote emitido.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pedido separado no Centro de Distribuição</div>
+            <div class="step__time">${formatDate(d2)}</div>
+            <div class="step__desc">Mercadoria pronta e bipada na doca de expedição expressa.</div>
+          </div>
+          <div class="step step--current-warning">
+            <div class="step__dot"></div>
+            <div class="step__title" style="color: var(--meli-orange);">Houve um problema com a entrega</div>
+            <div class="step__time">${formatDate(d3)}</div>
+            <div class="step__desc">Ocorreu um atraso operacional de redistribuição de malha rodoviária. Estamos reprocessando o envio prioritário para entregar o mais rápido possível no seu endereço.</div>
+          </div>
+        `;
+      } else if (elapsedDays < 7) {
+        // --- FASE 3: 5 a 7 dias (2 dias em enviado / a caminho da cidade) ---
+        statusShort = `Enviado • A caminho de ${localDestino}`;
+        bannerHtml = `
+          <div class="status-banner status-banner--transit">
+            <div class="status-banner__icon">🚚</div>
+            <div>
+              <div class="status-banner__title">Enviado • A caminho de ${localDestino}</div>
+              <div class="status-banner__desc">A pendência logística foi resolvida com sucesso! O pacote foi despachado e está em trânsito rodoviário expresso com destino a ${localDestino}.</div>
+            </div>
+          </div>
+        `;
+        timelineSteps = `
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pagamento Aprovado</div>
+            <div class="step__time">${formatDate(d1)}</div>
+            <div class="step__desc">Pagamento via Pix confirmado e pacote emitido.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pedido separado no Centro de Distribuição</div>
+            <div class="step__time">${formatDate(d2)}</div>
+            <div class="step__desc">Mercadoria conferida e embalada.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pendência operacional resolvida</div>
+            <div class="step__time">${formatDate(d3)}</div>
+            <div class="step__desc">Liberação de malha expressa concluída com prioridade máxima.</div>
+          </div>
+          <div class="step step--current">
+            <div class="step__dot"></div>
+            <div class="step__title">Objeto enviado • Em trânsito para ${localDestino}</div>
+            <div class="step__time">${formatDate(d4)}</div>
+            <div class="step__desc">Carga despachada em transporte rodoviário interestadual a caminho da sua região.</div>
+          </div>
+        `;
+      } else if (elapsedDays < 9) {
+        // --- FASE 4: 7 a 9 dias (2 dias em chegou na cidade da pessoa) ---
+        statusShort = `Chegou na unidade de ${localDestino}`;
+        bannerHtml = `
+          <div class="status-banner status-banner--transit">
+            <div class="status-banner__icon">🏢</div>
+            <div>
+              <div class="status-banner__title">Chegou na sua cidade (${localDestino})</div>
+              <div class="status-banner__desc">Sua encomenda chegou à unidade de distribuição local de ${localDestino} e está passando pela triagem final para sair para entrega.</div>
+            </div>
+          </div>
+        `;
+        timelineSteps = `
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pagamento Aprovado</div>
+            <div class="step__time">${formatDate(d1)}</div>
+            <div class="step__desc">Pagamento via Pix confirmado e pacote emitido.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pedido separado no Centro de Distribuição</div>
+            <div class="step__time">${formatDate(d2)}</div>
+            <div class="step__desc">Mercadoria conferida e embalada.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Objeto enviado em trânsito</div>
+            <div class="step__time">${formatDate(d4)}</div>
+            <div class="step__desc">Transporte rodoviário interestadual concluído.</div>
+          </div>
+          <div class="step step--current">
+            <div class="step__dot"></div>
+            <div class="step__title">Chegou na unidade de distribuição de ${localDestino}</div>
+            <div class="step__time">${formatDate(d5)}</div>
+            <div class="step__desc">Encomenda recebida no centro de triagem regional. Separação na doca de rota final em andamento.</div>
+          </div>
+        `;
+      } else if (elapsedDays < 10) {
+        // --- FASE 5: 9 a 10 dias (1 dia em saiu para entrega) ---
+        statusShort = 'Objeto saiu para entrega';
+        bannerHtml = `
+          <div class="status-banner status-banner--out">
+            <div class="status-banner__icon">🛵</div>
+            <div>
+              <div class="status-banner__title">Objeto saiu para entrega ao destinatário</div>
+              <div class="status-banner__desc">O motorista parceiro Mercado Envios / Correios está em rota com o seu pacote com destino ao seu endereço. Previsão de entrega para hoje.</div>
+            </div>
+          </div>
+        `;
+        timelineSteps = `
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pagamento Aprovado</div>
+            <div class="step__time">${formatDate(d1)}</div>
+            <div class="step__desc">Pagamento via Pix confirmado e pacote emitido.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Chegou na unidade de ${localDestino}</div>
+            <div class="step__time">${formatDate(d5)}</div>
+            <div class="step__desc">Triagem concluída e pacote atribuído ao entregador.</div>
+          </div>
+          <div class="step step--current">
+            <div class="step__dot"></div>
+            <div class="step__title">Objeto saiu para entrega ao destinatário</div>
+            <div class="step__time">${formatDate(d6)}</div>
+            <div class="step__desc">Motorista em rota de entrega no seu endereço. Mantenha alguém no local para receber o pacote.</div>
+          </div>
+        `;
+      } else {
+        // --- FASE 6: A partir de 10 dias (Destinatário não encontrado, ciclo repetindo a cada 48h / 2 dias) ---
+        const cycle = Math.floor((elapsedDays - 10) / 2);
+        const attemptNum = cycle + 1;
+        statusShort = `Destinatário ausente (${attemptNum}ª tentativa - Nova tentativa em 48h)`;
+
+        bannerHtml = `
+          <div class="status-banner status-banner--attempt">
+            <div class="status-banner__icon">⚠️</div>
+            <div>
+              <div class="status-banner__title">Tentativa de entrega não realizada (${attemptNum}ª tentativa)</div>
+              <div class="status-banner__desc">Não foi possível concluir a entrega porque o destinatário não foi encontrado no endereço (carteiro/motorista não atendido). A entrega tentará ser feita novamente em até 48 horas.</div>
+            </div>
+          </div>
+        `;
+
+        let baseTimeline = `
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Pagamento Aprovado</div>
+            <div class="step__time">${formatDate(d1)}</div>
+            <div class="step__desc">Pagamento via Pix confirmado e pacote emitido.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Chegou na unidade de ${localDestino}</div>
+            <div class="step__time">${formatDate(d5)}</div>
+            <div class="step__desc">Triagem concluída e pacote atribuído para entrega.</div>
+          </div>
+          <div class="step step--done">
+            <div class="step__dot"></div>
+            <div class="step__title">Objeto saiu para entrega ao destinatário</div>
+            <div class="step__time">${formatDate(d6)}</div>
+            <div class="step__desc">Motorista saiu para rota de entrega no endereço cadastrado.</div>
+          </div>
+        `;
+
+        let attemptsTimeline = '';
+        for (let i = 0; i <= cycle; i++) {
+          const attemptDate = new Date(created + (10 + i * 2) * 86400000 + (5 * 3600000) + (30 * 60000));
+          const isLatest = (i === cycle);
+          if (isLatest) {
+            attemptsTimeline += `
+              <div class="step step--current-warning">
+                <div class="step__dot"></div>
+                <div class="step__title" style="color: var(--meli-orange);">Destinatário não encontrado (${i + 1}ª tentativa)</div>
+                <div class="step__time">${formatDate(attemptDate)}</div>
+                <div class="step__desc">Carteiro/motorista não foi atendido no endereço informado. O pacote retornou para a unidade de distribuição e a entrega tentará ser feita novamente em até 48 horas.</div>
+              </div>
+            `;
+          } else {
+            attemptsTimeline += `
+              <div class="step step--warning">
+                <div class="step__dot"></div>
+                <div class="step__title" style="color: #92400e;">Tentativa de entrega não atendida (${i + 1}ª tentativa)</div>
+                <div class="step__time">${formatDate(attemptDate)}</div>
+                <div class="step__desc">Destinatário ausente no local. Pacote retido aguardando próxima saída para entrega em 48h.</div>
+              </div>
+            `;
+          }
+        }
+
+        timelineSteps = baseTimeline + attemptsTimeline;
+      }
+
+      res.innerHTML = `
+        <div class="card">
+          ${savePageHtml}
+          ${bannerHtml}
+          
+          <div class="order-head">
+            <div class="order-head__code">Código de Rastreio: <strong>${code}</strong></div>
+            <div class="order-head__date">${statusShort} • Envio Full</div>
+          </div>
+
+          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #111;">Itens do Pacote</h3>
+          <div class="items-list">
+            ${itemsHtml}
+          </div>
+
+          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #111;">Histórico do Envio</h3>
+          <div class="timeline">
+            ${timelineSteps}
+          </div>
+
+          <div class="address-card">
+            <strong>Destinatário / Entrega:</strong>
+            ${cust.nome ? cust.nome + '<br>' : ''}
+            ${ender}
+          </div>
+        </div>
+      `;
+
+      res.style.display = 'block';
+    }
+
+    // Auto-search via path (/rastreio/ML123456789BR) ou query string (?code=ML...)
+    window.addEventListener('DOMContentLoaded', () => {
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      // Ex: ['rastreio', 'ML123456789BR']
+      let pathCode = '';
+      if (pathParts.length >= 2 && pathParts[0].toLowerCase() === 'rastreio') {
+        const candidate = decodeURIComponent(pathParts[1]).trim();
+        if (candidate && candidate.toLowerCase() !== 'index.html' && candidate.toLowerCase() !== 'images') {
+          pathCode = candidate.toUpperCase();
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const code = pathCode || params.get('code') || params.get('c');
+      if (code) {
+        buscarRastreio(code);
+      } else {
+        const lastCode = localStorage.getItem('ml_last_tracking_code');
+        if (lastCode) buscarRastreio(lastCode);
+      }
+    });
+  </script>
+</body>
+</html>
