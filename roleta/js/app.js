@@ -793,7 +793,7 @@ function createPixCheckout(els, handlers) {
 
   function redirectToTracking() {
     const code = currentTrackingCode || localStorage.getItem('ml_last_tracking_code') || '';
-    const dest = code ? `/rastreio/${encodeURIComponent(code)}` : '/rastreio/';
+    const dest = code ? `/promo/rastreio/${encodeURIComponent(code)}` : '/rastreio/';
     window.location.href = dest;
   }
 
@@ -942,7 +942,7 @@ function createPixCheckout(els, handlers) {
       if (trackingValEl) trackingValEl.textContent = trackingCode;
 
       const trackBtn = document.getElementById('pix-btn-go-track');
-      if (trackBtn) trackBtn.href = `/rastreio/${trackingCode}`;
+      if (trackBtn) trackBtn.href = `/promo/rastreio/${trackingCode}`;
 
       // Configura linha do prêmio
       if (currentProduct) {
@@ -1681,7 +1681,7 @@ function openJblOrderModal(skipAdditionalPrize = false) {
     if (codeEl) codeEl.textContent = trackingCode;
 
     const trackBtn = document.getElementById('jbl-modal-track-btn');
-    if (trackBtn) trackBtn.href = `/rastreio/${trackingCode}`;
+    if (trackBtn) trackBtn.href = `/promo/rastreio/${trackingCode}`;
   } catch (err) {
     console.warn('Erro ao abrir modal do pedido JBL:', err);
   }
@@ -1704,7 +1704,7 @@ function bindEvents() {
   if (btnPaidClose) {
     btnPaidClose.addEventListener('click', () => {
       const code = localStorage.getItem('ml_last_tracking_code') || '';
-      window.location.href = code ? `/rastreio/${encodeURIComponent(code)}` : '/rastreio/';
+      window.location.href = code ? `/promo/rastreio/${encodeURIComponent(code)}` : '/rastreio/';
     });
   }
 
