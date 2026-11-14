@@ -7,15 +7,17 @@ if ($id === '') {
     json_response(['success' => false, 'error' => 'ID da transacao obrigatorio'], 400);
 }
 
-$apiKey = env_value('PINGUPAG_SECRET_KEY') ?: 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
+$token = env_value('LULAPAY_TOKEN') ?: 'gwk_c25fff532aaa9ca37b2187ea884c991a2b6114d7ca6b3125';
 
-$ch = curl_init('https://app.pingupag.com/gateway/v1/query?action=get_transaction&id=' . rawurlencode($id));
+$param = (strpos($id, 'ord_') === 0) ? ('id=' . rawurlencode($id)) : ('external_id=' . rawurlencode($id));
+
+$ch = curl_init('https://lulapay.onrender.com/api/v1/cobranca.php?' . $param);
 curl_setopt_array($ch, [
     CURLOPT_HTTPGET => true,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER => [
         'Accept: application/json',
-        'X-API-Key: ' . $apiKey
+        'Authorization: Bearer ' . $token
     ],
     CURLOPT_TIMEOUT => 15
 ]);
@@ -25,8 +27,8 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $data = json_decode((string) $response, true);
-$raw = strtoupper((string) ($data['status'] ?? (isset($data[0]['status']) ? $data[0]['status'] : 'PENDING')));
-$mapped = in_array($raw, ['PAID', 'APPROVED', 'COMPLETED', 'SUCCEEDED', 'PAGO'], true) ? 'APPROVED' : 'PENDING';
+$raw = strtolower((string) ($data['status'] ?? 'pending'));
+$mapped = in_array($raw, ['paid', 'approved', 'completed', 'pago'], true) ? 'APPROVED' : ($raw === 'canceled' || $raw === 'refunded' ? 'CANCELED' : 'PENDING');
 
 json_response([
     'success' => true,

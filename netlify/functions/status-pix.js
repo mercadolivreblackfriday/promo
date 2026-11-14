@@ -1,11 +1,11 @@
 const https = require('https');
 
-const PINGUPAG_SECRET_KEY = process.env.PINGUPAG_SECRET_KEY || 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
+const LULAPAY_TOKEN = process.env.LULAPAY_TOKEN || 'gwk_c25fff532aaa9ca37b2187ea884c991a2b6114d7ca6b3125';
 
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Content-Type': 'application/json'
   };
@@ -14,31 +14,33 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers, body: '' };
   }
 
-  const txid = event.queryStringParameters && event.queryStringParameters.id;
+  const txid = (event.queryStringParameters && event.queryStringParameters.id) || '';
   if (!txid) {
     return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'ID da transação obrigatório' }) };
   }
 
-  // Tenta consulta direta por ID numérico/ofuscado
-  const queryPath = `/gateway/v1/query?action=get_transaction&id=${encodeURIComponent(txid)}`;
+  // Consulta cobrança na LulaPay por ID ou external_id
+  const param = txid.startsWith('ord_') ? `id=${encodeURIComponent(txid)}` : `external_id=${encodeURIComponent(txid)}`;
+  const queryPath = `/api/v1/cobranca.php?${param}`;
 
   return new Promise((resolve) => {
-    const pinguReq = https.request({
-      hostname: 'app.pingupag.com',
+    const lulaReq = https.request({
+      hostname: 'lulapay.onrender.com',
       path: queryPath,
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'X-API-Key': PINGUPAG_SECRET_KEY
+        'Authorization': `Bearer ${LULAPAY_TOKEN}`
       }
-    }, pinguRes => {
-      let pinguData = '';
-      pinguRes.on('data', chunk => pinguData += chunk);
-      pinguRes.on('end', () => {
+    }, lulaRes => {
+      let lulaData = '';
+      lulaRes.on('data', chunk => lulaData += chunk);
+      lulaRes.on('end', () => {
         try {
-          const parsed = JSON.parse(pinguData);
-          const raw = String(parsed.status || (Array.isArray(parsed) && parsed[0] ? parsed[0].status : 'PENDING')).toUpperCase();
-          const mapped = ['PAID', 'APPROVED', 'COMPLETED', 'SUCCEEDED', 'PAGO'].includes(raw) ? 'APPROVED' : 'PENDING';
+          const parsed = JSON.parse(lulaData);
+          const raw = String(parsed.status || 'pending').toLowerCase();
+          const mapped = (raw === 'paid' || raw === 'approved' || raw === 'completed' || raw === 'pago') ? 'APPROVED' : (raw === 'canceled' || raw === 'refunded' ? 'CANCELED' : 'PENDING');
+
           resolve({
             statusCode: 200,
             headers,
@@ -46,7 +48,8 @@ exports.handler = async (event) => {
               success: true,
               status: mapped,
               transacao_id: txid,
-              raw_status: raw
+              raw_status: raw,
+              charge: parsed
             })
           });
         } catch (_) {
@@ -59,8 +62,8 @@ exports.handler = async (event) => {
       });
     });
 
-    pinguReq.on('error', err => {
-      console.error('[STATUS PIX] Erro na consulta:', err);
+    lulaReq.on('error', err => {
+      console.error('[STATUS PIX] Erro na consulta LulaPay:', err);
       resolve({
         statusCode: 200,
         headers,
@@ -68,6 +71,15 @@ exports.handler = async (event) => {
       });
     });
 
-    pinguReq.end();
+    lulaReq.setTimeout(15000, () => {
+      lulaReq.destroy();
+      resolve({
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, status: 'PENDING', transacao_id: txid })
+      });
+    });
+
+    lulaReq.end();
   });
 };

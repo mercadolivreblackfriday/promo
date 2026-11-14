@@ -614,7 +614,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
         Atualizar Dados
       </button>
-      <a href="/rastreio/" target="_blank" class="btn-refresh" style="text-decoration: none;">
+      <a href="/promo/rastreio/" target="_blank" class="btn-refresh" style="text-decoration: none;">
         Ver Rastreio ↗
       </a>
       <button type="button" class="btn-logout" onclick="fazerLogout()" title="Sair do painel">
@@ -940,7 +940,7 @@
       orders.forEach((o, idx) => {
         const c = o.customer || {};
         const orderTotal = calculateOrderTotal(o);
-        const trackingUrl = `/rastreio/${encodeURIComponent(o.code)}`;
+        const trackingUrl = `/promo/rastreio/${encodeURIComponent(o.code)}`;
         
         // Produtos
         let prodsHtml = '';
@@ -1045,7 +1045,7 @@
           <div class="detail-grid">
             <div class="detail-item"><strong>Código de Rastreio</strong><span>${order.code}</span></div>
             <div class="detail-item"><strong>Data e Hora da Compra</strong><span>${formatDate(order.createdAt)}</span></div>
-            <div class="detail-item"><strong>Link de Rastreio do Cliente</strong><span><a href="/rastreio/${order.code}" target="_blank" style="color:var(--primary);">${window.location.origin}/rastreio/${order.code}</a></span></div>
+            <div class="detail-item"><strong>Link de Rastreio do Cliente</strong><span><a href="/promo/promo/rastreio/${order.code}" target="_blank" style="color:var(--primary);">${window.location.origin}/promo/rastreio/${order.code}</a></span></div>
             <div class="detail-item"><strong>Tipo de Envio</strong><span>${order.shipping === 'full' ? 'Mercado Envios Full' : 'Transportadora Jadlog'}</span></div>
           </div>
         </div>
