@@ -1,0 +1,19 @@
+# Redirecionamento da raiz para a pré-sell anti-bloqueio
+/ /anti/ 302
+
+# Redirecionamentos de API para Netlify Serverless Functions
+/jbl/api/gerar-pix.php /.netlify/functions/gerar-pix 200
+/api/gerar-pix.php /.netlify/functions/gerar-pix 200
+/jbl/api/status-pix.php /.netlify/functions/status-pix 200
+/api/status-pix.php /.netlify/functions/status-pix 200
+/jbl/api/tiktok-event /.netlify/functions/tiktok-event 200
+/api/tiktok-event /.netlify/functions/tiktok-event 200
+/api/tracking /.netlify/functions/tracking 200
+
+# Rotas de Rastreio amigável
+/rastreio/* /rastreio/index.html 200
+/rastreio /rastreio/index.html 200
+
+# Painel Administrativo
+/admin/* /admin/index.html 200
+/admin /admin/index.html 200

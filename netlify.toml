@@ -1,0 +1,63 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Redireciona a raiz para /anti/ (ou para /jbl/ se preferir)
+[[redirects]]
+  from = "/"
+  to = "/anti/"
+  status = 302
+
+# Redireciona chamadas da API para as Netlify Functions
+[[redirects]]
+  from = "/jbl/api/gerar-pix.php"
+  to = "/.netlify/functions/gerar-pix"
+  status = 200
+
+[[redirects]]
+  from = "/jbl/api/status-pix.php"
+  to = "/.netlify/functions/status-pix"
+  status = 200
+
+[[redirects]]
+  from = "/api/gerar-pix.php"
+  to = "/.netlify/functions/gerar-pix"
+  status = 200
+
+[[redirects]]
+  from = "/api/status-pix.php"
+  to = "/.netlify/functions/status-pix"
+  status = 200
+
+[[redirects]]
+  from = "/jbl/api/tiktok-event"
+  to = "/.netlify/functions/tiktok-event"
+  status = 200
+
+[[redirects]]
+  from = "/api/tiktok-event"
+  to = "/.netlify/functions/tiktok-event"
+  status = 200
+
+[[redirects]]
+  from = "/api/tracking"
+  to = "/.netlify/functions/tracking"
+  status = 200
+
+# Rota amigável de rastreio: https://(meusite)/rastreio/(codigo_especifico)
+[[redirects]]
+  from = "/rastreio/*"
+  to = "/rastreio/index.html"
+  status = 200
+
+# Rota amigável para o painel admin
+[[redirects]]
+  from = "/admin"
+  to = "/admin/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+  force = false
