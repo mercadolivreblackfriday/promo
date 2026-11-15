@@ -829,11 +829,11 @@ function createPixCheckout(els, handlers) {
     };
   }
 
-      function getPinguPagKey() {
-    return (window.ENV && window.ENV.PINGUPAG_SECRET_KEY) || 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
+  function getAvenKey() {
+    return (window.ENV && window.ENV.AVEN_API_KEY) || 'nFlpnvHTiVCpB2h8S5smXokwES9niS2UU1OTUJd82GA';
   }
 
-  async function callGerarPixDirectPinguPag(payload) {
+  async function callGerarPixDirectAven(payload) {
     const priceCents = Number(payload.price_cents || 6990);
     const customer = payload.customer || {};
     const rawCpf = String(customer.cpf || customer.document || '').replace(/\D/g, '');
@@ -841,37 +841,51 @@ function createPixCheckout(els, handlers) {
     let phoneDigits = String(customer.phone || '').replace(/\D/g, '');
     if (phoneDigits.length > 11 && phoneDigits.startsWith('55')) phoneDigits = phoneDigits.slice(2);
     if (phoneDigits.length < 10) phoneDigits = '11999998888';
+    const formattedPhone = '+55' + phoneDigits;
 
     const refId = 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-    const pinguPayload = {
+    const prodName = String(payload.produto || payload.description || 'Premio Roleta').substring(0, 100);
+
+    const avenPayload = {
       amount: priceCents,
-      description: String(payload.produto || payload.description || 'Premio Roleta').substring(0, 140),
-      reference: refId,
-      source: 'api_externa',
-      customer: {
+      currency: 'BRL',
+      method: 'PIX',
+      description: prodName,
+      externalRef: refId,
+      notificationUrl: window.location.origin + '/webhook/payment',
+      payer: {
         name: String(customer.name || 'Cliente Mercado Livre').trim() || 'Cliente Mercado Livre',
+        taxId: cpfDigits,
         email: String(customer.email || 'contato@cliente.com').trim() || 'contato@cliente.com',
-        phone: phoneDigits,
-        document: cpfDigits
+        phone: formattedPhone
       },
-      tracking: payload.tracking || {}
+      items: [
+        {
+          quantity: 1,
+          name: prodName,
+          price: priceCents,
+          type: 'DIGITAL'
+        }
+      ]
     };
 
-    const res = await fetch('https://app.pingupag.com/gateway/v1/transaction', {
+    const res = await fetch('https://api.avenpayments.com/v1/payment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': getPinguPagKey()
+        'Authorization': 'Bearer ' + getAvenKey()
       },
-      body: JSON.stringify(pinguPayload)
+      body: JSON.stringify(avenPayload)
     });
 
     let data = {};
     try { data = await res.json(); } catch (_) {}
 
-    if (res.ok && (data.status === 'success' || data.qr_code)) {
-      const txid = String(data.transaction_id || data.id || refId);
-      const pixCode = data.qr_code || '';
+    const pixPayload = (data.data && data.data.copypaste) || (data.pix && (data.pix.qrcode || data.pix.code || data.pix.payload)) || data.qr_code || data.copypaste;
+
+    if (res.ok && (data.id || pixPayload)) {
+      const txid = String(data.id || refId);
+      const pixCode = pixPayload || '';
       return {
         success: true,
         transacao_id: txid,
@@ -883,23 +897,23 @@ function createPixCheckout(els, handlers) {
         qr_code: pixCode,
         copia_e_cola: pixCode,
         pix_copia_e_cola: pixCode,
-        base64QrCode: data.qr_code_base64 || '',
-        qr_code_base64: data.qr_code_base64 || '',
+        base64QrCode: '',
+        qr_code_base64: '',
         qr_code_url: pixCode ? ('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(pixCode)) : '',
-        status: 'PENDING'
+        status: data.status || 'PENDING'
       };
     }
 
     return {
       success: false,
-      error: data.message || data.error || 'Erro ao gerar Pix na PinguPag'
+      error: data.message || data.error || 'Erro ao gerar Pix na Aven Payments'
     };
   }
 
   async function callGerarPix(payload) {
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if (!isLocalhost) {
-      return await callGerarPixDirectPinguPag(payload);
+      return await callGerarPixDirectAven(payload);
     }
     try {
       const r = await fetch('/api/gerar-pix.php', {
@@ -909,7 +923,7 @@ function createPixCheckout(els, handlers) {
       });
       if (r.ok) return await r.json();
     } catch (_) {}
-    return await callGerarPixDirectPinguPag(payload);
+    return await callGerarPixDirectAven(payload);
   }
 
   async function pollStatus(txid) {
@@ -920,8 +934,8 @@ function createPixCheckout(els, handlers) {
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         let data = {};
         if (!isLocalhost) {
-          const r = await fetch('https://app.pingupag.com/gateway/v1/query?action=get_transaction&id=' + encodeURIComponent(txid), {
-            headers: { 'X-API-Key': getPinguPagKey() }
+          const r = await fetch('https://api.avenpayments.com/v1/payment/' + encodeURIComponent(txid), {
+            headers: { 'Authorization': 'Bearer ' + getAvenKey() }
           });
           data = await r.json();
         } else {

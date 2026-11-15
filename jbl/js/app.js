@@ -1052,48 +1052,50 @@
     }, getTracking());
   }
 
-      function getPinguPagKey() {
-    return (window.ENV && window.ENV.PINGUPAG_SECRET_KEY) || 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
+  function getAvenKey() {
+    return (window.ENV && window.ENV.AVEN_API_KEY) || 'nFlpnvHTiVCpB2h8S5smXokwES9niS2UU1OTUJd82GA';
   }
 
-  async function createPixDirectPinguPag(body, amountFloat) {
+  async function createPixDirectAven(body, amountFloat) {
     const priceCents = Math.round(amountFloat * 100);
     const rawCpf = String(body.payerCpf || '').replace(/\D/g, '');
     const cpfDigits = (rawCpf.length === 11 && !/^(\d)\1{10}$/.test(rawCpf)) ? rawCpf : '52998224725';
     let phoneDigits = String(body.payerPhone || '').replace(/\D/g, '');
     if (phoneDigits.length > 11 && phoneDigits.startsWith('55')) phoneDigits = phoneDigits.slice(2);
     if (phoneDigits.length < 10) phoneDigits = '11999998888';
+    const formattedPhone = '+55' + phoneDigits;
 
     const refId = 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
-    const tracking = (typeof getTracking === 'function') ? getTracking() : {};
+    const prodName = String(body.description || 'JBL Boombox 4').substring(0, 100);
 
     const payload = {
       amount: priceCents,
-      description: String(body.description || 'JBL Boombox 4').substring(0, 140),
-      reference: refId,
-      source: 'api_externa',
-      customer: {
+      currency: 'BRL',
+      method: 'PIX',
+      description: prodName,
+      externalRef: refId,
+      notificationUrl: window.location.origin + '/webhook/payment',
+      payer: {
         name: String(body.payerName || 'Cliente JBL').trim() || 'Cliente JBL',
+        taxId: cpfDigits,
         email: String(body.payerEmail || 'contato@cliente.com').trim() || 'contato@cliente.com',
-        phone: phoneDigits,
-        document: cpfDigits
+        phone: formattedPhone
       },
-      tracking: {
-        utm_source: tracking.utm_source || '',
-        utm_medium: tracking.utm_medium || '',
-        utm_campaign: tracking.utm_campaign || '',
-        utm_content: tracking.utm_content || '',
-        utm_term: tracking.utm_term || '',
-        src: tracking.src || '',
-        sck: tracking.sck || ''
-      }
+      items: [
+        {
+          quantity: 1,
+          name: prodName,
+          price: priceCents,
+          type: 'DIGITAL'
+        }
+      ]
     };
 
-    const res = await fetch('https://app.pingupag.com/gateway/v1/transaction', {
+    const res = await fetch('https://api.avenpayments.com/v1/payment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': getPinguPagKey()
+        'Authorization': 'Bearer ' + getAvenKey()
       },
       body: JSON.stringify(payload)
     });
@@ -1101,18 +1103,21 @@
     let data = {};
     try { data = await res.json(); } catch (_) {}
 
-    if (res.ok && (data.status === 'success' || data.qr_code)) {
-      const txid = String(data.transaction_id || data.id || refId);
+    const pixPayload = (data.data && data.data.copypaste) || (data.pix && (data.pix.qrcode || data.pix.code || data.pix.payload)) || data.qr_code || data.copypaste;
+
+    if (res.ok && (data.id || pixPayload)) {
+      const txid = String(data.id || refId);
+      const qrCode = pixPayload || '';
       return {
         txid: txid,
-        qrCode: data.qr_code || '',
-        base64QrCode: data.qr_code_base64 || '',
+        qrCode: qrCode,
+        base64QrCode: '',
         purchaseEventId: txid
       };
     }
 
-    const msg = data.message || data.error || 'Erro ao gerar Pix na PinguPag';
-    throw new Error('PinguPag: ' + msg);
+    const msg = data.message || data.error || 'Erro ao gerar Pix na Aven Payments';
+    throw new Error('Aven Payments: ' + msg);
   }
 
   async function createPix() {
@@ -1122,7 +1127,7 @@
 
     // No GitHub Pages ou qualquer ambiente estático sem PHP, chama direto a API da PinguPag (com CORS oficial)
     if (!isLocalhost) {
-      return await createPixDirectPinguPag(body, amountFloat);
+      return await createPixDirectAven(body, amountFloat);
     }
 
     let endpoint = '/api/gerar-pix.php';
@@ -1161,7 +1166,7 @@
     } catch (_) {}
 
     // Fallback direto PinguPag
-    return await createPixDirectPinguPag(body, amountFloat);
+    return await createPixDirectAven(body, amountFloat);
   }
 
   let lastPurchase = null;                        // guarda valor + eventID p/ o Purchase do pixel
@@ -1271,9 +1276,9 @@
         let resData = null;
 
         if (!isLocalhost) {
-          // Consulta direta à PinguPag via browser (CORS liberado)
-          const r = await fetch('https://app.pingupag.com/gateway/v1/query?action=get_transaction&id=' + encodeURIComponent(txid), {
-            headers: { 'X-API-Key': getPinguPagKey() }
+          // Consulta direta à Aven Payments via browser (CORS liberado)
+          const r = await fetch('https://api.avenpayments.com/v1/payment/' + encodeURIComponent(txid), {
+            headers: { 'Authorization': 'Bearer ' + getAvenKey() }
           });
           resData = await r.json();
         } else {
