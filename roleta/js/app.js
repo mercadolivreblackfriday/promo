@@ -829,16 +829,87 @@ function createPixCheckout(els, handlers) {
     };
   }
 
-    async function callGerarPix(payload) {
-    // No Netlify ou domínio personalizado (não-localhost), usa Netlify Functions
-    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const endpoint = isLocalhost ? '/api/gerar-pix.php' : '/.netlify/functions/gerar-pix';
-    const r = await fetch(endpoint, {
+      function getPinguPagKey() {
+    return (window.ENV && window.ENV.PINGUPAG_SECRET_KEY) || 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
+  }
+
+  async function callGerarPixDirectPinguPag(payload) {
+    const priceCents = Number(payload.price_cents || 6990);
+    const customer = payload.customer || {};
+    const rawCpf = String(customer.cpf || customer.document || '').replace(/\D/g, '');
+    const cpfDigits = (rawCpf.length === 11 && !/^(\d)\1{10}$/.test(rawCpf)) ? rawCpf : '52998224725';
+    let phoneDigits = String(customer.phone || '').replace(/\D/g, '');
+    if (phoneDigits.length > 11 && phoneDigits.startsWith('55')) phoneDigits = phoneDigits.slice(2);
+    if (phoneDigits.length < 10) phoneDigits = '11999998888';
+
+    const refId = 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+    const pinguPayload = {
+      amount: priceCents,
+      description: String(payload.produto || payload.description || 'Premio Roleta').substring(0, 140),
+      reference: refId,
+      source: 'api_externa',
+      customer: {
+        name: String(customer.name || 'Cliente Mercado Livre').trim() || 'Cliente Mercado Livre',
+        email: String(customer.email || 'contato@cliente.com').trim() || 'contato@cliente.com',
+        phone: phoneDigits,
+        document: cpfDigits
+      },
+      tracking: payload.tracking || {}
+    };
+
+    const res = await fetch('https://app.pingupag.com/gateway/v1/transaction', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': getPinguPagKey()
+      },
+      body: JSON.stringify(pinguPayload)
     });
-    return await r.json();
+
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+
+    if (res.ok && (data.status === 'success' || data.qr_code)) {
+      const txid = String(data.transaction_id || data.id || refId);
+      const pixCode = data.qr_code || '';
+      return {
+        success: true,
+        transacao_id: txid,
+        id: txid,
+        txid: txid,
+        pixCode: pixCode,
+        qrCode: pixCode,
+        pix_code: pixCode,
+        qr_code: pixCode,
+        copia_e_cola: pixCode,
+        pix_copia_e_cola: pixCode,
+        base64QrCode: data.qr_code_base64 || '',
+        qr_code_base64: data.qr_code_base64 || '',
+        qr_code_url: pixCode ? ('https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(pixCode)) : '',
+        status: 'PENDING'
+      };
+    }
+
+    return {
+      success: false,
+      error: data.message || data.error || 'Erro ao gerar Pix na PinguPag'
+    };
+  }
+
+  async function callGerarPix(payload) {
+    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isLocalhost) {
+      return await callGerarPixDirectPinguPag(payload);
+    }
+    try {
+      const r = await fetch('/api/gerar-pix.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (r.ok) return await r.json();
+    } catch (_) {}
+    return await callGerarPixDirectPinguPag(payload);
   }
 
   async function pollStatus(txid) {
@@ -847,11 +918,19 @@ function createPixCheckout(els, handlers) {
     pollInterval = setInterval(async () => {
       try {
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        const endpoint = isLocalhost ? `/api/status-pix.php?id=${encodeURIComponent(txid)}` : `/.netlify/functions/status-pix?id=${encodeURIComponent(txid)}`;
-        const r = await fetch(endpoint);
-        const data = await r.json();
-        const st = String(data.status || '').toUpperCase();
-        if (st === 'PAID' || st === 'APPROVED' || st === 'COMPLETED' || st === 'SUCCEEDED' || st === 'PAGO') {
+        let data = {};
+        if (!isLocalhost) {
+          const r = await fetch('https://app.pingupag.com/gateway/v1/query?action=get_transaction&id=' + encodeURIComponent(txid), {
+            headers: { 'X-API-Key': getPinguPagKey() }
+          });
+          data = await r.json();
+        } else {
+          const r = await fetch('/api/status-pix.php?id=' + encodeURIComponent(txid));
+          data = await r.json();
+        }
+
+        const raw = String((data && data.status) || (Array.isArray(data) && data[0] ? data[0].status : '')).toUpperCase();
+        if (['PAID', 'APPROVED', 'COMPLETED', 'SUCCEEDED', 'PAGO'].includes(raw)) {
           clearInterval(pollInterval);
           pollInterval = null;
           onPaymentSuccess();
