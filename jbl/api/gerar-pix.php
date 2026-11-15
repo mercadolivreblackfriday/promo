@@ -12,39 +12,50 @@ if ($amount < 100) {
     json_response(['success' => false, 'error' => 'Valor invalido'], 400);
 }
 
-$amountBrl = round($amount / 100, 2);
-
 $customer = is_array($input['customer'] ?? null) ? $input['customer'] : [];
 $name = trim((string) ($customer['name'] ?? $input['nome_pagador'] ?? 'Cliente Mercado Livre')) ?: 'Cliente Mercado Livre';
 $email = filter_var((string) ($customer['email'] ?? $input['email_pagador'] ?? ''), FILTER_VALIDATE_EMAIL) ?: 'contato@cliente.com';
-$cpf = preg_replace('/\D+/', '', (string) ($customer['cpf'] ?? $customer['document'] ?? $input['cpf_pagador'] ?? '52998224725'));
+$cpf = preg_replace('/\D+/', '', (string) ($customer['cpf'] ?? $customer['document'] ?? $input['cpf_pagador'] ?? '05481744180'));
 if (strlen($cpf) !== 11) {
-    $cpf = '52998224725';
+    $cpf = '05481744180';
 }
-$phone = preg_replace('/\D+/', '', (string) ($customer['phone'] ?? $input['telefone_pagador'] ?? '11999998888')) ?: '11999998888';
-$produto = substr(trim((string) ($input['produto'] ?? $input['description'] ?? 'Caixa JBL Boombox 4')), 0, 140);
-$externalId = 'ord-' . time() . '-' . mt_rand(1000, 9999);
+$phone = preg_replace('/\D+/', '', (string) ($customer['phone'] ?? $input['telefone_pagador'] ?? '11999999999')) ?: '11999999999';
+$utm = store_utm_from_input(is_array($input['utm'] ?? null) ? $input['utm'] : ($input['tracking'] ?? []));
+$produto = trim((string) ($input['produto'] ?? $input['description'] ?? 'Caixa JBL Boombox 4'));
 
-$token = env_value('LULAPAY_TOKEN') ?: 'gwk_c25fff532aaa9ca37b2187ea884c991a2b6114d7ca6b3125';
+$refId = 'REF-' . time() . '-' . mt_rand(1000, 9999);
+$apiKey = env_value('PINGUPAG_SECRET_KEY') ?: 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
 
 $payload = [
-    'amount' => $amountBrl,
+    'amount' => $amount,
     'description' => $produto,
-    'external_id' => $externalId,
-    'customer_name' => $name,
-    'customer_email' => $email,
-    'customer_phone' => $phone,
-    'customer_document' => $cpf
+    'reference' => $refId,
+    'source' => 'api_externa',
+    'customer' => [
+        'name' => $name,
+        'email' => $email,
+        'phone' => $phone,
+        'document' => $cpf
+    ],
+    'tracking' => [
+        'utm_source' => $utm['utm_source'] ?? '',
+        'utm_medium' => $utm['utm_medium'] ?? '',
+        'utm_campaign' => $utm['utm_campaign'] ?? '',
+        'utm_content' => $utm['utm_content'] ?? '',
+        'utm_term' => $utm['utm_term'] ?? '',
+        'src' => $utm['src'] ?? '',
+        'sck' => $utm['sck'] ?? ''
+    ]
 ];
 
-$ch = curl_init('https://lulapay.onrender.com/api/v1/cobranca.php');
+$ch = curl_init('https://app.pingupag.com/gateway/v1/transaction');
 curl_setopt_array($ch, [
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => json_encode($payload),
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HTTPHEADER => [
         'Content-Type: application/json',
-        'Authorization: Bearer ' . $token
+        'X-API-Key: ' . $apiKey
     ],
     CURLOPT_TIMEOUT => 25
 ]);
@@ -54,34 +65,22 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $data = json_decode((string) $response, true);
-
-if (($httpCode === 200 || $httpCode === 201) && !empty($data['pix_code'])) {
-    $pixCode = $data['pix_code'];
-    $txid = (string) ($data['id'] ?? $externalId);
-    $qrBase64 = $data['qr_image'] ?? '';
-    $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . rawurlencode($pixCode);
-
-    json_response([
-        'success' => true,
-        'transacao_id' => $txid,
-        'id' => $txid,
-        'txid' => $txid,
-        'pixCode' => $pixCode,
-        'qrCode' => $pixCode,
-        'pix_code' => $pixCode,
-        'qr_code' => $pixCode,
-        'pix_copia_e_cola' => $pixCode,
-        'qrcode' => $pixCode,
-        'base64QrCode' => $qrBase64,
-        'qr_code_base64' => $qrBase64,
-        'qr_code_url' => $qrUrl,
-        'valor' => number_format($amountBrl, 2, '.', ''),
-        'status' => 'PENDING'
-    ]);
-} else {
-    json_response([
-        'success' => false,
-        'error' => $data['error'] ?? $data['message'] ?? 'Erro ao gerar Pix na LulaPay',
-        'detalhes' => $data
-    ], 400);
+if ($httpCode < 200 || $httpCode >= 300 || empty($data['qr_code'])) {
+    $errMsg = (string) ($data['message'] ?? $data['error'] ?? 'PinguPag recusou a criacao do PIX');
+    json_response(['success' => false, 'error' => $errMsg, 'raw' => $data], 502);
 }
+
+$code = (string) ($data['qr_code'] ?? '');
+$transacaoId = (string) ($data['transaction_id'] ?? $data['id'] ?? $refId);
+
+json_response([
+    'success' => true,
+    'pixCode' => $code,
+    'qrCode' => $code,
+    'qr_code' => $code,
+    'qr_code_base64' => (string) ($data['qr_code_base64'] ?? ''),
+    'pix_copia_e_cola' => $code,
+    'transacao_id' => $transacaoId,
+    'id' => $transacaoId,
+    'status' => 'PENDING'
+]);

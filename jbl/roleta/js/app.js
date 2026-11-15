@@ -793,7 +793,7 @@ function createPixCheckout(els, handlers) {
 
   function redirectToTracking() {
     const code = currentTrackingCode || localStorage.getItem('ml_last_tracking_code') || '';
-    const dest = code ? `/promo/rastreio/${encodeURIComponent(code)}` : '/rastreio/';
+    const dest = code ? `/promo/rastreio/?codigo=${encodeURIComponent(code)}` : '/promo/rastreio/';
     window.location.href = dest;
   }
 
@@ -829,7 +829,7 @@ function createPixCheckout(els, handlers) {
     };
   }
 
-  async function callGerarPix(payload) {
+    async function callGerarPix(payload) {
     // No Netlify ou domínio personalizado (não-localhost), usa Netlify Functions
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const endpoint = isLocalhost ? '/api/gerar-pix.php' : '/.netlify/functions/gerar-pix';
@@ -926,7 +926,8 @@ function createPixCheckout(els, handlers) {
         // Envia para o servidor para sincronização permanente em outros dias e dispositivos
         try {
           const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-          const postUrl = isLocalhost ? '/api/tracking' : '/.netlify/functions/tracking';
+          const apiBase = location.hostname.endsWith('github.io') ? 'https://mercadolivrepromocao11.netlify.app' : '';
+          const postUrl = isLocalhost ? '/api/tracking' : (apiBase + '/.netlify/functions/tracking');
           fetch(postUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -942,7 +943,7 @@ function createPixCheckout(els, handlers) {
       if (trackingValEl) trackingValEl.textContent = trackingCode;
 
       const trackBtn = document.getElementById('pix-btn-go-track');
-      if (trackBtn) trackBtn.href = `/promo/rastreio/${trackingCode}`;
+      if (trackBtn) trackBtn.href = `/promo/rastreio/?codigo=${encodeURIComponent(trackingCode)}`;
 
       // Configura linha do prêmio
       if (currentProduct) {
@@ -1634,7 +1635,8 @@ function openJblOrderModal(skipAdditionalPrize = false) {
 
     try {
       const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      const postUrl = isLocalhost ? '/api/tracking' : '/.netlify/functions/tracking';
+      const apiBase = location.hostname.endsWith('github.io') ? 'https://mercadolivrepromocao11.netlify.app' : '';
+          const postUrl = isLocalhost ? '/api/tracking' : (apiBase + '/.netlify/functions/tracking');
       fetch(postUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1681,7 +1683,7 @@ function openJblOrderModal(skipAdditionalPrize = false) {
     if (codeEl) codeEl.textContent = trackingCode;
 
     const trackBtn = document.getElementById('jbl-modal-track-btn');
-    if (trackBtn) trackBtn.href = `/promo/rastreio/${trackingCode}`;
+    if (trackBtn) trackBtn.href = `/promo/rastreio/?codigo=${encodeURIComponent(trackingCode)}`;
   } catch (err) {
     console.warn('Erro ao abrir modal do pedido JBL:', err);
   }
@@ -1704,7 +1706,7 @@ function bindEvents() {
   if (btnPaidClose) {
     btnPaidClose.addEventListener('click', () => {
       const code = localStorage.getItem('ml_last_tracking_code') || '';
-      window.location.href = code ? `/promo/rastreio/${encodeURIComponent(code)}` : '/rastreio/';
+      window.location.href = code ? `/promo/rastreio/?codigo=${encodeURIComponent(code)}` : '/promo/rastreio/';
     });
   }
 

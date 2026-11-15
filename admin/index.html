@@ -850,7 +850,8 @@
 
     async function carregarPedidos() {
       const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      const url = isLocalhost ? '/api/tracking?all=true' : '/.netlify/functions/tracking?all=true';
+      const apiBase = location.hostname.endsWith('github.io') ? 'https://mercadolivrepromocao11.netlify.app' : '';
+      const url = isLocalhost ? '/api/tracking?all=true' : (apiBase + '/.netlify/functions/tracking?all=true');
       
       let serverOrders = [];
       try {
@@ -940,7 +941,7 @@
       orders.forEach((o, idx) => {
         const c = o.customer || {};
         const orderTotal = calculateOrderTotal(o);
-        const trackingUrl = `/promo/rastreio/${encodeURIComponent(o.code)}`;
+        const trackingUrl = `/promo/rastreio/?codigo=${encodeURIComponent(o.code)}`;
         
         // Produtos
         let prodsHtml = '';
@@ -948,7 +949,7 @@
           o.cart.forEach(item => {
             prodsHtml += `
               <div class="prod-pill" title="${item.name}">
-                <img src="${item.image || '/rastreio/images/jbl_main.webp'}" class="prod-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+                <img src="${item.image || '/promo/rastreio/images/jbl_main.webp'}" class="prod-thumb" onerror="this.src='/promo/rastreio/images/jbl_main.webp'">
                 <span class="prod-name">${item.qty || 1}x ${item.name}</span>
               </div>
             `;
@@ -956,7 +957,7 @@
         } else {
           prodsHtml = `
             <div class="prod-pill">
-              <img src="/rastreio/images/jbl_main.webp" class="prod-thumb">
+              <img src="/promo/rastreio/images/jbl_main.webp" class="prod-thumb">
               <span class="prod-name">1x Caixa de Som JBL Boombox 4</span>
             </div>
           `;
@@ -1016,7 +1017,7 @@
         order.cart.forEach(item => {
           cartItemsHtml += `
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-              <img src="${item.image || '/rastreio/images/jbl_main.webp'}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; background:#fff;">
+              <img src="${item.image || '/promo/rastreio/images/jbl_main.webp'}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; background:#fff;">
               <div>
                 <div style="font-weight:600; color:#FFF;">${item.name}</div>
                 <div style="font-size:12px; color:var(--text-muted);">${item.qty || 1}x • ${formatMoney(item.price || (item.type==='bump'?29.9:69.9))}</div>
@@ -1030,7 +1031,7 @@
       if (order.prize && order.prize.name) {
         prizeDetailHtml = `
           <div style="display:flex; align-items:center; gap:12px;">
-            <img src="${order.prize.image || order.prize.reelThumb || '/rastreio/images/jbl_main.webp'}" style="width:44px; height:44px; border-radius:4px; object-fit:cover; background:#fff;">
+            <img src="${order.prize.image || order.prize.reelThumb || '/promo/rastreio/images/jbl_main.webp'}" style="width:44px; height:44px; border-radius:4px; object-fit:cover; background:#fff;">
             <div>
               <div style="font-weight:700; color:#C084FC;">🎁 ${order.prize.name}</div>
               <div style="font-size:12px; color:var(--text-muted);">${formatMoney(order.prize.price)} (90% OFF aplicado)</div>
@@ -1045,7 +1046,7 @@
           <div class="detail-grid">
             <div class="detail-item"><strong>Código de Rastreio</strong><span>${order.code}</span></div>
             <div class="detail-item"><strong>Data e Hora da Compra</strong><span>${formatDate(order.createdAt)}</span></div>
-            <div class="detail-item"><strong>Link de Rastreio do Cliente</strong><span><a href="/promo/promo/rastreio/${order.code}" target="_blank" style="color:var(--primary);">${window.location.origin}/promo/rastreio/${order.code}</a></span></div>
+            <div class="detail-item"><strong>Link de Rastreio do Cliente</strong><span><a href="/promo/rastreio/?codigo=${encodeURIComponent(order.code)}" target="_blank" style="color:var(--primary);">${window.location.origin}/promo/rastreio/?codigo=${encodeURIComponent(order.code)}</a></span></div>
             <div class="detail-item"><strong>Tipo de Envio</strong><span>${order.shipping === 'full' ? 'Mercado Envios Full' : 'Transportadora Jadlog'}</span></div>
           </div>
         </div>
