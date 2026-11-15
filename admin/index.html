@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <script src="env.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel Administrativo | Gestão de Pedidos e Rastreios</title>
@@ -575,6 +576,18 @@
       .metrics-grid { grid-template-columns: 1fr; }
       .tips-grid { grid-template-columns: 1fr; }
     }
+  
+    .status-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .status-tag--paid { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .status-tag--pix { background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); }
+    .status-tag--cart { background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .status-tag--error { background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .status-tag--bounce { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.3); }
+    .status-tag--engaged { background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .tab-nav { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+    .tab-btn { background: none; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+    .tab-btn.is-active { background: var(--primary); color: #fff; }
+    
   </style>
 </head>
 <body>
@@ -667,41 +680,50 @@
     </div>
 
     <!-- Métricas Gerais -->
-    <div class="metrics-grid">
-      <div class="metric-card" style="--accent: #10B981;">
-        <div class="metric-card__header">
-          <span class="metric-card__title">Total de Vendas</span>
-          <span class="metric-card__icon">💰</span>
-        </div>
-        <div class="metric-card__value" id="metricTotalSales">R$ 0,00</div>
-        <div class="metric-card__sub" id="metricSalesCount">0 pedidos aprovados</div>
-      </div>
-
+    <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
       <div class="metric-card" style="--accent: #38BDF8;">
         <div class="metric-card__header">
-          <span class="metric-card__title">Clientes Rastreáveis</span>
-          <span class="metric-card__icon">📦</span>
+          <span class="metric-card__title">Total de Visitas</span>
+          <span class="metric-card__icon">👀</span>
         </div>
-        <div class="metric-card__value" id="metricTotalClients">0</div>
-        <div class="metric-card__sub">Códigos de rastreio emitidos</div>
+        <div class="metric-card__value" id="metricTotalVisits">0</div>
+        <div class="metric-card__sub" id="metricVisitsSub">0 reais • 0 bots</div>
       </div>
 
-      <div class="metric-card" style="--accent: #A855F7;">
+      <div class="metric-card" style="--accent: #10B981;">
         <div class="metric-card__header">
-          <span class="metric-card__title">Prêmios Vinculados</span>
-          <span class="metric-card__icon">🎁</span>
+          <span class="metric-card__title">Mexendo na Tela</span>
+          <span class="metric-card__icon">👆</span>
         </div>
-        <div class="metric-card__value" id="metricTotalPrizes">0</div>
-        <div class="metric-card__sub">Resgates da Roleta 10.10</div>
+        <div class="metric-card__value" id="metricEngaged">0</div>
+        <div class="metric-card__sub" id="metricEngagedSub">0 só entraram e saíram</div>
       </div>
 
       <div class="metric-card" style="--accent: #F59E0B;">
         <div class="metric-card__header">
-          <span class="metric-card__title">Ticket Médio</span>
-          <span class="metric-card__icon">📊</span>
+          <span class="metric-card__title">No Carrinho</span>
+          <span class="metric-card__icon">🛒</span>
         </div>
-        <div class="metric-card__value" id="metricAverageTicket">R$ 0,00</div>
-        <div class="metric-card__sub">Média por pedido</div>
+        <div class="metric-card__value" id="metricCart">0</div>
+        <div class="metric-card__sub" id="metricCartSub">0 tentaram gerar Pix</div>
+      </div>
+
+      <div class="metric-card" style="--accent: #EF4444;">
+        <div class="metric-card__header">
+          <span class="metric-card__title">Erros no Pix</span>
+          <span class="metric-card__icon">⚠️</span>
+        </div>
+        <div class="metric-card__value" id="metricPixErrors">0</div>
+        <div class="metric-card__sub">Tentativas rejeitadas</div>
+      </div>
+
+      <div class="metric-card" style="--accent: #10B981;">
+        <div class="metric-card__header">
+          <span class="metric-card__title">Pix Pagos</span>
+          <span class="metric-card__icon">💰</span>
+        </div>
+        <div class="metric-card__value" id="metricPaid">0</div>
+        <div class="metric-card__sub" id="metricTotalSales">R$ 0,00 aprovado</div>
       </div>
     </div>
 
@@ -715,7 +737,50 @@
     </div>
 
     <!-- Tabela de Pedidos -->
-    <div class="table-card">
+    
+    <!-- Navegação por Abas -->
+    <div class="tab-nav">
+      <button type="button" class="tab-btn is-active" id="tabBtnVisitors" onclick="trocarAba('visitors')">👥 Visitantes em Tempo Real (<span id="countVisitorsTab">0</span>)</button>
+      <button type="button" class="tab-btn" id="tabBtnOrders" onclick="trocarAba('orders')">📦 Pedidos e Rastreios (<span id="countOrdersTab">0</span>)</button>
+    </div>
+
+    <!-- Tabela de Visitantes e Tráfego Detalhado -->
+    <div class="table-card" id="cardVisitors">
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h3 style="font-size: 15px; font-weight: 800; color: #FFF; margin: 0 0 4px;">Auditoria de Acessos & Comportamento</h3>
+          <span style="font-size: 12px; color: var(--text-muted);">Origem (UTMs/Rastreio), horário exato, geolocalização por IP, interação, carrinho e status do Pix</span>
+        </div>
+        <button type="button" class="btn-detail" onclick="carregarTudo()">Atualizar Agora 🔄</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Horário / Data</th>
+              <th>Origem / Rastreio</th>
+              <th>Localização (IP / Cidade)</th>
+              <th>Dispositivo / Tipo</th>
+              <th>Comportamento / Funil</th>
+              <th>Status do Pix</th>
+              <th>Detalhes / Ações</th>
+            </tr>
+          </thead>
+          <tbody id="visitorsTableBody">
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <div class="empty-state__icon">⏳</div>
+                  <div class="empty-state__text">Monitorando acessos em tempo real...</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="table-card" id="cardOrders" style="display: none;">
       <div class="table-wrap">
         <table>
           <thead>
@@ -773,7 +838,7 @@
       const overlay = document.getElementById('loginOverlay');
       if (isAuth) {
         overlay.hidden = true;
-        carregarPedidos();
+        carregarTudo();
       } else {
         overlay.hidden = false;
         document.getElementById('adminUser').focus();
@@ -792,7 +857,7 @@
         sessionStorage.setItem('admin_auth', 'true');
         err.style.display = 'none';
         document.getElementById('loginOverlay').hidden = true;
-        carregarPedidos();
+        carregarTudo();
       } else {
         err.style.display = 'block';
         document.getElementById('adminPass').value = '';
@@ -1091,7 +1156,212 @@
       document.getElementById('detailModal').hidden = false;
     }
 
-    function fecharModal() {
+    
+    let allVisitors = [];
+    let currentTab = 'visitors';
+
+    function trocarAba(aba) {
+      currentTab = aba;
+      const btnV = document.getElementById('tabBtnVisitors');
+      const btnO = document.getElementById('tabBtnOrders');
+      const cardV = document.getElementById('cardVisitors');
+      const cardO = document.getElementById('cardOrders');
+
+      if (aba === 'visitors') {
+        btnV.classList.add('is-active');
+        btnO.classList.remove('is-active');
+        cardV.style.display = 'block';
+        cardO.style.display = 'none';
+      } else {
+        btnO.classList.add('is-active');
+        btnV.classList.remove('is-active');
+        cardO.style.display = 'block';
+        cardV.style.display = 'none';
+      }
+    }
+
+    function carregarTudo() {
+      carregarPedidos();
+      carregarVisitantes();
+    }
+
+    function carregarVisitantes() {
+      let db = { sessions: {}, events: [] };
+      try {
+        db = JSON.parse(localStorage.getItem('ml_analytics_db') || '{"sessions":{},"events":[]}');
+      } catch(e) {}
+
+      allVisitors = Object.values(db.sessions || {}).sort((a,b) => (b.lastSeen || b.firstSeen || 0) - (a.lastSeen || a.firstSeen || 0));
+
+      atualizarMetricasVisitantes();
+      renderVisitantes(allVisitors);
+    }
+
+    function atualizarMetricasVisitantes() {
+      const total = allVisitors.length;
+      let reais = 0;
+      let bots = 0;
+      let mexendo = 0; // engaged
+      let sairam = 0;  // bounced
+      let carrinho = 0;
+      let tentouPix = 0;
+      let pixErros = 0;
+      let pagos = 0;
+
+      allVisitors.forEach(v => {
+        if (v.isBot) bots++; else reais++;
+        if (v.engaged || (v.screenActivity > 0) || (v.clicks > 0)) mexendo++; else sairam++;
+        if (v.cartAdded) carrinho++;
+        if (v.pixAttempted) tentouPix++;
+        if (v.pixError) pixErros++;
+        if (v.paid) pagos++;
+      });
+
+      document.getElementById('metricTotalVisits').textContent = total;
+      document.getElementById('metricVisitsSub').textContent = `${reais} reais • ${bots} bots/falsas`;
+      document.getElementById('metricEngaged').textContent = mexendo;
+      document.getElementById('metricEngagedSub').textContent = `${sairam} só entraram e saíram`;
+      document.getElementById('metricCart').textContent = carrinho;
+      document.getElementById('metricCartSub').textContent = `${tentouPix} tentaram Pix`;
+      document.getElementById('metricPixErrors').textContent = pixErros;
+      document.getElementById('metricPaid').textContent = pagos;
+      
+      const countVTab = document.getElementById('countVisitorsTab');
+      if (countVTab) countVTab.textContent = total;
+    }
+
+    function renderVisitantes(lista) {
+      const tbody = document.getElementById('visitorsTableBody');
+      if (!tbody) return;
+
+      if (!lista || lista.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state__icon">👥</div>
+                <div class="empty-state__text">Nenhum visitante registrado ainda. Acesse a loja para ver o rastreamento em tempo real.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = '';
+      lista.forEach(v => {
+        const horaEntrada = formatDate(v.firstSeen);
+        const geoInfo = (v.geo && (v.geo.city || v.geo.ip)) ? `${v.geo.city ? v.geo.city + ' (' + v.geo.region + ')' : ''} <div style="font-size:11px; color:var(--text-muted);">IP: ${v.geo.ip || 'Local'}</div>` : '<span style="color:var(--text-muted);">Consultando IP...</span>';
+        
+        let funilHtml = '';
+        if (v.bounced && !v.engaged && !v.cartAdded) {
+          funilHtml = '<span class="status-tag status-tag--bounce">🚪 Só entrou e saiu</span>';
+        } else if (v.screenActivity > 0 || v.engaged) {
+          funilHtml = `<span class="status-tag status-tag--engaged">👆 Mexendo na tela (${v.screenActivity || v.clicks || 1}x)</span>`;
+        }
+
+        if (v.cartAdded) {
+          funilHtml += ' <span class="status-tag status-tag--cart">🛒 No Carrinho</span>';
+        }
+
+        let pixStatusHtml = '<span style="color:var(--text-muted); font-size:12px;">Não tentou Pix</span>';
+        if (v.paid) {
+          pixStatusHtml = '<span class="status-tag status-tag--paid">✅ Pix Pago</span>';
+        } else if (v.pixError) {
+          pixStatusHtml = `<span class="status-tag status-tag--error" title="${v.pixError}">❌ Erro: ${v.pixError}</span>`;
+        } else if (v.pixAttempted) {
+          pixStatusHtml = '<span class="status-tag status-tag--pix">⏳ Pix Gerado</span>';
+        }
+
+        const tipoPessoa = v.isBot ? '<span style="color:#F87171; font-weight:700;">🤖 Bot / Falsa</span>' : '<span style="color:#34D399; font-weight:700;">👤 Pessoa Real</span>';
+
+        html += `
+          <tr>
+            <td style="white-space:nowrap; font-size:12px; color:var(--text-muted);">
+              <strong>${horaEntrada}</strong>
+              <div style="font-size:11px;">Permaneceu: ${v.durationSec || 0}s</div>
+            </td>
+            <td>
+              <strong style="color:#FFF;">${v.origin || 'Direto'}</strong>
+              <div style="font-size:11px; color:var(--text-muted);">Pág: ${v.initialPage || '/'}</div>
+            </td>
+            <td>${geoInfo}</td>
+            <td>
+              <div>${tipoPessoa}</div>
+              <div style="font-size:11px; color:var(--text-muted);">${v.device || 'Mobile'}</div>
+            </td>
+            <td>${funilHtml}</td>
+            <td>${pixStatusHtml}</td>
+            <td>
+              <button type="button" class="btn-detail" onclick="abrirAuditoriaVisitante('${v.id}')">Auditoria</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function abrirAuditoriaVisitante(id) {
+      const v = allVisitors.find(x => x.id === id);
+      if (!v) return;
+
+      document.getElementById('modalTitle').textContent = `Auditoria do Visitante ${v.id}`;
+
+      let actsHtml = '';
+      if (Array.isArray(v.actions) && v.actions.length > 0) {
+        v.actions.forEach(a => {
+          actsHtml += `
+            <div style="padding:6px 0; border-bottom:1px solid #334155; font-size:12px;">
+              <span style="color:var(--text-muted);">[${formatDate(a.time)}]</span>
+              <strong style="color:var(--primary); margin-left:6px;">${a.type}</strong>
+              <span style="margin-left:6px; color:#E2E8F0;">${a.details ? JSON.stringify(a.details) : ''} ${a.page ? '(' + a.page + ')' : ''}</span>
+            </div>
+          `;
+        });
+      } else {
+        actsHtml = '<div style="color:var(--text-muted); font-size:12px;">Nenhum evento registrado nesta sessão.</div>';
+      }
+
+      const modalHtml = `
+        <div class="detail-section">
+          <div class="detail-section__title">Dados da Sessão</div>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>ID da Sessão</strong><span>${v.id}</span></div>
+            <div class="detail-item"><strong>Tipo de Acesso</strong><span>${v.isBot ? 'Bot / Crawler (Falso)' : 'Pessoa Real'}</span></div>
+            <div class="detail-item"><strong>Primeiro Acesso</strong><span>${formatDate(v.firstSeen)}</span></div>
+            <div class="detail-item"><strong>Última Atividade</strong><span>${formatDate(v.lastSeen)}</span></div>
+            <div class="detail-item"><strong>Origem (Rastreio)</strong><span>${v.origin || 'Direto'}</span></div>
+            <div class="detail-item"><strong>Dispositivo</strong><span>${v.device}</span></div>
+            <div class="detail-item"><strong>Localização</strong><span>${v.geo ? (v.geo.city + ' - ' + v.geo.region + ' | IP: ' + v.geo.ip) : 'Não identificada'}</span></div>
+            <div class="detail-item"><strong>Tempo na Página</strong><span>${v.durationSec || 0} segundos</span></div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section__title">Status no Funil de Vendas</div>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Mexeu na Tela</strong><span>${v.screenActivity > 0 ? 'Sim (' + v.screenActivity + ' interações)' : (v.engaged ? 'Sim' : 'Não (Só entrou e saiu)')}</span></div>
+            <div class="detail-item"><strong>Adicionou ao Carrinho</strong><span>${v.cartAdded ? 'Sim' : 'Não'}</span></div>
+            <div class="detail-item"><strong>Tentativa de Pix</strong><span>${v.pixAttempted ? 'Sim' : 'Não'}</span></div>
+            <div class="detail-item"><strong>Erro no Pix</strong><span style="color:#F87171;">${v.pixError || 'Nenhum erro registrado'}</span></div>
+            <div class="detail-item"><strong>Status Final</strong><span style="color:${v.paid ? '#34D399' : '#F59E0B'};">${v.paid ? 'Pix Pago com Sucesso' : 'Pendente / Não pago'}</span></div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section__title">Linha do Tempo de Eventos</div>
+          <div style="max-height:200px; overflow-y:auto;">
+            ${actsHtml}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('modalContent').innerHTML = modalHtml;
+      document.getElementById('detailModal').hidden = false;
+    }
+
+function fecharModal() {
       document.getElementById('detailModal').hidden = true;
     }
 

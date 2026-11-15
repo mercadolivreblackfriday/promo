@@ -1049,13 +1049,80 @@
     }, getTracking());
   }
 
-    async function createPix() {
+      function getPinguPagKey() {
+    return (window.ENV && window.ENV.PINGUPAG_SECRET_KEY) || 'pingupag_sk_185039b4a3f9c649956d48c5cfdeffdc70cb188711ef3a5d1d73c7c4f3a6dacd';
+  }
+
+  async function createPixDirectPinguPag(body, amountFloat) {
+    const priceCents = Math.round(amountFloat * 100);
+    const rawCpf = String(body.payerCpf || '').replace(/\D/g, '');
+    const cpfDigits = (rawCpf.length === 11 && !/^(\d)\1{10}$/.test(rawCpf)) ? rawCpf : '52998224725';
+    let phoneDigits = String(body.payerPhone || '').replace(/\D/g, '');
+    if (phoneDigits.length > 11 && phoneDigits.startsWith('55')) phoneDigits = phoneDigits.slice(2);
+    if (phoneDigits.length < 10) phoneDigits = '11999998888';
+
+    const refId = 'REF-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+    const tracking = (typeof getTracking === 'function') ? getTracking() : {};
+
+    const payload = {
+      amount: priceCents,
+      description: String(body.description || 'JBL Boombox 4').substring(0, 140),
+      reference: refId,
+      source: 'api_externa',
+      customer: {
+        name: String(body.payerName || 'Cliente JBL').trim() || 'Cliente JBL',
+        email: String(body.payerEmail || 'contato@cliente.com').trim() || 'contato@cliente.com',
+        phone: phoneDigits,
+        document: cpfDigits
+      },
+      tracking: {
+        utm_source: tracking.utm_source || '',
+        utm_medium: tracking.utm_medium || '',
+        utm_campaign: tracking.utm_campaign || '',
+        utm_content: tracking.utm_content || '',
+        utm_term: tracking.utm_term || '',
+        src: tracking.src || '',
+        sck: tracking.sck || ''
+      }
+    };
+
+    const res = await fetch('https://app.pingupag.com/gateway/v1/transaction', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': getPinguPagKey()
+      },
+      body: JSON.stringify(payload)
+    });
+
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+
+    if (res.ok && (data.status === 'success' || data.qr_code)) {
+      const txid = String(data.transaction_id || data.id || refId);
+      return {
+        txid: txid,
+        qrCode: data.qr_code || '',
+        base64QrCode: data.qr_code_base64 || '',
+        purchaseEventId: txid
+      };
+    }
+
+    const msg = data.message || data.error || 'Erro ao gerar Pix na PinguPag';
+    throw new Error('PinguPag: ' + msg);
+  }
+
+  async function createPix() {
     const body = pixCreateBody();
     const amountFloat = Number(body.value || 0);
-
-    // No Netlify ou domínio personalizado (não-localhost), usa Netlify Functions
     const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    let endpoint = isLocalhost ? '/api/gerar-pix.php' : '/.netlify/functions/gerar-pix';
+
+    // No GitHub Pages ou qualquer ambiente estático sem PHP, chama direto a API da PinguPag (com CORS oficial)
+    if (!isLocalhost) {
+      return await createPixDirectPinguPag(body, amountFloat);
+    }
+
+    let endpoint = '/api/gerar-pix.php';
     let reqBody = JSON.stringify({
       price_cents: Math.round(amountFloat * 100),
       produto: body.description || 'JBL Boombox 4',
@@ -1071,30 +1138,27 @@
       utm: getTracking()
     });
 
-    if (PIX_CFG.api && PIX_CFG.api !== 'api' && PIX_CFG.api !== '.') {
-      endpoint = `${PIX_CFG.api}/api/pix/create`;
-      reqBody = JSON.stringify(body);
-    }
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: reqBody
+      });
+      if (res.ok) {
+        let data = await res.json();
+        if (data.success !== false && (data.qrCode || data.pixCode)) {
+          return {
+            txid: data.transacao_id || data.txid || data.id,
+            qrCode: data.qrCode || data.pixCode || data.qr_code,
+            base64QrCode: data.base64QrCode || data.qr_code_base64,
+            purchaseEventId: data.purchaseEventId || data.transacao_id || data.txid
+          };
+        }
+      }
+    } catch (_) {}
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: reqBody
-    });
-    let data = {};
-    try { data = await res.json(); } catch (_) {}
-    if (!res.ok || data.ok === false || data.success === false) {
-      const msg = data.error || data.message || data.errorMessage;
-      throw new Error(msg ? `PinguPag: ${msg}` : 'Não foi possível gerar o PIX na PinguPag.');
-    }
-
-    // Normaliza retorno da PinguPag para o checkout do JBL
-    return {
-      txid: data.transacao_id || data.txid || data.id || (data.data && data.data.id),
-      qrCode: data.qrCode || data.pixCode || data.qr_code || data.pix_copia_e_cola || (data.data && data.data.qrCode),
-      base64QrCode: data.base64QrCode || data.qr_code_base64 || (data.data && data.data.pix && data.data.pix.qrCodeImage),
-      purchaseEventId: data.purchaseEventId || data.transacao_id || data.txid || (data.data && data.data.id)
-    };
+    // Fallback direto PinguPag
+    return await createPixDirectPinguPag(body, amountFloat);
   }
 
   let lastPurchase = null;                        // guarda valor + eventID p/ o Purchase do pixel
@@ -1195,21 +1259,29 @@
     });
   })();
 
-    function startPolling(txid) {
+      function startPolling(txid) {
     clearInterval(pollTimer);
     if (!txid) return;
     pollTimer = setInterval(async () => {
       try {
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        let url = isLocalhost ? `/api/status-pix.php?id=${encodeURIComponent(txid)}` : `/.netlify/functions/status-pix?id=${encodeURIComponent(txid)}`;
-        if (PIX_CFG.api && PIX_CFG.api !== 'api' && PIX_CFG.api !== '.') {
-          url = `${PIX_CFG.api}/api/pix/status/${encodeURIComponent(txid)}`;
+        let resData = null;
+
+        if (!isLocalhost) {
+          // Consulta direta à PinguPag via browser (CORS liberado)
+          const r = await fetch('https://app.pingupag.com/gateway/v1/query?action=get_transaction&id=' + encodeURIComponent(txid), {
+            headers: { 'X-API-Key': getPinguPagKey() }
+          });
+          resData = await r.json();
+        } else {
+          const r = await fetch('/api/status-pix.php?id=' + encodeURIComponent(txid));
+          resData = await r.json();
         }
-        const r = await fetch(url);
-        const d = await r.json();
-        const st = String(d.status || '').toUpperCase();
-        if (PAID_STATUS.includes(st) || d.paid === true) {
+
+        const raw = String((resData && resData.status) || (Array.isArray(resData) && resData[0] ? resData[0].status : '')).toUpperCase();
+        if (PAID_STATUS.includes(raw) || ['PAID', 'APPROVED', 'COMPLETED', 'SUCCEEDED', 'PAGO'].includes(raw)) {
           clearInterval(pollTimer);
+          if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('pix_paid', 'Pix pago e compensado');
           onPixPaid();
         }
       } catch (_) { /* ignora falha pontual de rede; segue tentando */ }
@@ -1460,6 +1532,7 @@
     // Sem API configurada → modo demonstração
     if (!PIX_CFG.api) {
       showLoading('Já é quase sua!');
+    if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('pix_attempt', 'Tentou gerar Pix no checkout');
       hideLoadingAfter(1800, () => {
         renderQR();
         $('#pixCode').textContent = fakePixCode();
@@ -1469,6 +1542,7 @@
       return;
     }
     showLoading('Já é quase sua!');
+    if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('pix_attempt', 'Tentou gerar Pix no checkout');
     try {
       const data = await createPix();
       try {
@@ -1482,9 +1556,11 @@
       clearTimeout(loadTimer);
       loadView.hidden = true;
       showPixResult(data);
+    if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('pix_success', 'Pix gerado com sucesso: ' + (data.txid || ''));
     } catch (err) {
       clearTimeout(loadTimer);
       loadView.hidden = true;
+      if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('pix_error', err.message || 'Falha ao processar pagamento na adquirente');
       toast(err.message || 'Erro ao gerar o PIX. Tente novamente.');
     }
   }
@@ -1973,6 +2049,7 @@
     updateCheckout();
     cho.querySelector('.cho__scroll').scrollTop = 0;
     showLoading('Preparando tudo para<br>sua compra');
+    if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('add_to_cart', 'Abriu checkout / carrinho');
     openModal(cho);
     fbTrack('InitiateCheckout', { value: unitPrice() * qty, currency: 'BRL', content_ids: [PRODUCT_ID], content_type: 'product' });
     ttkTrack('InitiateCheckout', { value: unitPrice() * qty, quantity: qty });
@@ -2169,6 +2246,7 @@
         renderSteps();
         cho.querySelector('.cho__scroll').scrollTop = 0;
         showLoading('Preparando tudo para<br>sua compra');
+    if (window.ML_ANALYTICS) window.ML_ANALYTICS.track('add_to_cart', 'Abriu checkout / carrinho');
         openModal(cho);
         hideLoadingAfter(1500, () => showSeguro(() => $('#fCep').focus()));
       }
@@ -2534,15 +2612,12 @@
     e.preventDefault();
     qField.value = li.textContent.trim();
     closeAllMenus();
-    toast(`Busca: “${qField.value}” — demonstração, não navega para outra página.`);
   });
   qField.addEventListener('blur', () => setTimeout(closeAllMenus, 120));
 
   $('#searchForm').addEventListener('submit', e => {
     e.preventDefault();
-    const term = qField.value.trim();
     closeAllMenus();
-    toast(term ? `Busca: “${term}” — demonstração.` : 'Digite algo para buscar.');
   });
 
   /* ==================== NAVEGAÇÃO INTERNA (SPA) ==================== */
