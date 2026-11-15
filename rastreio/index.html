@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Rastreamento de Pedido | Mercado Livre Envios</title>
-  <link rel="icon" href="/rastreio/images/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="images/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Proxima+Nova:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -410,7 +410,7 @@
 
   <header class="hdr">
     <a href="/promo/jbl/" class="hdr__logo">
-      <img src="/rastreio/images/logo.webp" alt="Mercado Livre">
+      <img src="images/logo.webp" alt="Mercado Livre">
     </a>
     <span class="hdr__badge">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
@@ -461,7 +461,8 @@
     async function fetchServerTracking(code) {
       try {
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        const url = isLocalhost ? `/api/tracking?code=${encodeURIComponent(code)}` : `/.netlify/functions/tracking?code=${encodeURIComponent(code)}`;
+        const apiBase = location.hostname.endsWith('github.io') ? 'https://mercadolivrepromocao11.netlify.app' : '';
+        const url = isLocalhost ? `/api/tracking?code=${encodeURIComponent(code)}` : `${apiBase}/.netlify/functions/tracking?code=${encodeURIComponent(code)}`;
         const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
@@ -474,7 +475,8 @@
     async function syncTrackingToServer(record) {
       try {
         const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-        const url = isLocalhost ? '/api/tracking' : '/.netlify/functions/tracking';
+        const apiBase = location.hostname.endsWith('github.io') ? 'https://mercadolivrepromocao11.netlify.app' : '';
+        const url = isLocalhost ? '/api/tracking' : (apiBase + '/.netlify/functions/tracking');
         await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -550,11 +552,15 @@
     }
 
     function normalizeImgPath(src, defaultPrefix) {
-      if (!src) return '/rastreio/images/jbl_main.webp';
-      if (src.startsWith('http') || src.startsWith('/') || src.startsWith('data:')) return src;
-      if (src.startsWith('images/')) return (defaultPrefix || '/rastreio/') + src;
-      if (src.startsWith('img/')) return '/roleta/' + src;
-      return (defaultPrefix || '/rastreio/') + src.replace(/^\.?\//, '');
+      const basePrefix = location.pathname.startsWith('/promo') ? '/promo' : '';
+      if (!src) return 'images/jbl_main.webp';
+      if (src.startsWith('http') || src.startsWith('data:')) return src;
+      if (src.startsWith('/promo/')) return src;
+      if (src.startsWith('/')) return basePrefix + src;
+      const pref = defaultPrefix ? (defaultPrefix.startsWith('/promo') ? defaultPrefix : basePrefix + defaultPrefix) : (basePrefix + '/rastreio/');
+      if (src.startsWith('images/')) return pref + src;
+      if (src.startsWith('img/')) return basePrefix + '/roleta/' + src;
+      return pref + src.replace(/^\.?\//, '');
     }
 
     function abrirModalCopia() {
@@ -652,7 +658,12 @@
       try {
         localStorage.setItem('ml_last_tracking_code', code);
         if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', '/rastreio/' + encodeURIComponent(code) + (currentQs || ''));
+          const newParams = new URLSearchParams(window.location.search);
+          newParams.set('codigo', code);
+          newParams.delete('code');
+          newParams.delete('c');
+          const basePath = location.pathname.startsWith('/promo') ? '/promo/rastreio/' : '/rastreio/';
+          window.history.replaceState(null, '', basePath + '?' + newParams.toString());
         }
       } catch (_) {}
 
@@ -683,7 +694,7 @@
           const itemImg = normalizeImgPath(item.image, '/jbl/');
           itemsHtml += `
             <div class="item-row">
-              <img src="${itemImg}" alt="${item.name}" class="item-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+              <img src="${itemImg}" alt="${item.name}" class="item-thumb" onerror="this.src='images/jbl_main.webp'">
               <div class="item-info">
                 <h4 class="item-title">${item.name}</h4>
                 <span class="item-badge">${item.type === 'bump' ? 'Oferta Especial' : 'Pedido Principal'} • 1x • Frete Full</span>
@@ -696,7 +707,7 @@
         const mainImg = normalizeImgPath(main.image, '/rastreio/');
         itemsHtml += `
           <div class="item-row">
-            <img src="${mainImg}" alt="JBL Boombox 4" class="item-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+            <img src="${mainImg}" alt="JBL Boombox 4" class="item-thumb" onerror="this.src='images/jbl_main.webp'">
             <div class="item-info">
               <h4 class="item-title">${main.name || "Caixa de Som Bluetooth À Prova D'água JBL Boombox 4 Branca 210W"}</h4>
               <span class="item-badge">Pedido Principal • 1x • Frete Full</span>
@@ -709,7 +720,7 @@
         const prizeImg = normalizeImgPath(record.prize.image || record.prize.reelThumb, '/roleta/');
         itemsHtml += `
           <div class="item-row">
-            <img src="${prizeImg}" alt="${record.prize.name}" class="item-thumb" onerror="this.src='/rastreio/images/jbl_main.webp'">
+            <img src="${prizeImg}" alt="${record.prize.name}" class="item-thumb" onerror="this.src='images/jbl_main.webp'">
             <div class="item-info">
               <h4 class="item-title">${record.prize.name}</h4>
               <span class="item-badge item-badge--prize">🎁 Prêmio Roleta 10.10 Vinculado ao Pacote</span>
@@ -720,7 +731,7 @@
 
       const ender = cust.logradouro ? `${cust.logradouro}, ${cust.numero || 'S/N'}${cust.complemento ? ' - ' + cust.complemento : ''} - ${cust.bairro || ''}, ${cust.localidade || ''} - ${cust.uf || ''}` : 'Endereço informado no momento da compra';
 
-      const shareUrl = `${window.location.origin}/promo/rastreio/${code}`;
+      const shareUrl = `${window.location.origin}/promo/rastreio/?codigo=${encodeURIComponent(code)}`;
       const savePageHtml = `
         <div class="save-page-box">
           <div class="save-page-box__head">
@@ -1017,22 +1028,27 @@
     // Auto-search via path (/rastreio/ML123456789BR) ou query string (?code=ML...)
     window.addEventListener('DOMContentLoaded', () => {
       const pathParts = window.location.pathname.split('/').filter(Boolean);
-      // Ex: ['rastreio', 'ML123456789BR']
       let pathCode = '';
-      if (pathParts.length >= 2 && pathParts[0].toLowerCase() === 'rastreio') {
-        const candidate = decodeURIComponent(pathParts[1]).trim();
+      const rastreioIdx = pathParts.findIndex(p => p.toLowerCase() === 'rastreio');
+      if (rastreioIdx !== -1 && pathParts.length > rastreioIdx + 1) {
+        const candidate = decodeURIComponent(pathParts[rastreioIdx + 1]).trim();
         if (candidate && candidate.toLowerCase() !== 'index.html' && candidate.toLowerCase() !== 'images') {
           pathCode = candidate.toUpperCase();
         }
       }
 
       const params = new URLSearchParams(window.location.search);
-      const code = pathCode || params.get('code') || params.get('c');
+      const code = (params.get('codigo') || params.get('code') || params.get('c') || pathCode || '').trim().toUpperCase();
+      const input = document.getElementById('trackingCodeInput');
       if (code) {
+        if (input) input.value = code;
         buscarRastreio(code);
       } else {
-        const lastCode = localStorage.getItem('ml_last_tracking_code');
-        if (lastCode) buscarRastreio(lastCode);
+        const lastCode = (localStorage.getItem('ml_last_tracking_code') || '').trim().toUpperCase();
+        if (lastCode) {
+          if (input) input.value = lastCode;
+          buscarRastreio(lastCode);
+        }
       }
     });
   </script>
