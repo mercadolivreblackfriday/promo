@@ -924,13 +924,16 @@
     $('#revBillCpf').textContent = `CPF ${$('#fCpf').value || ''}`;
     $('#revShipAddr').textContent = `${$('#fRua').value} ${$('#fNum').value}`.trim();
     const shipVal = ($('input[name="ship"]:checked', addrForm) || {}).value;
-    const REV_ETA = {
-      normal:   'Envio 1 — chega em 12 a 15 dias úteis · Grátis',
-      correios: 'Envio 2 — chega em 9 a 10 dias úteis · R$ 7,90',
-      jadlog:   'Envio 3 — chega em 5 a 8 dias úteis · R$ 11,90',
-      full:     'Envio 4 — chega em 1 dia útil · R$ 15,90',
+    const SHIP_INFO = {
+      normal:   { name: 'Envio 1', eta: 'Envio 1 — chega em 12 a 15 dias úteis · Grátis', tag: 'Envio 1' },
+      correios: { name: 'Envio 2', eta: 'Envio 2 — chega em 9 a 10 dias úteis · R$ 7,90', tag: 'Envio 2' },
+      jadlog:   { name: 'Envio 3', eta: 'Envio 3 — chega em 5 a 8 dias úteis · R$ 11,90', tag: 'Envio 3' },
+      full:     { name: 'Envio 4', eta: 'Envio 4 — chega em 4 a 7 dias úteis · R$ 15,90', tag: 'Envio 4 <span class="full"><svg width="9" height="9" aria-hidden="true" focusable="false"><use href="#i-bolt"></use></svg>FULL</span>' },
     };
-    $('#revShipEta').textContent = REV_ETA[shipVal] || REV_ETA.normal;
+    const curShip = SHIP_INFO[shipVal] || SHIP_INFO.full;
+    $('#revShipEta').textContent = curShip.eta;
+    const revShipTag = $('#revShipTag') || $('.rev-card__tag');
+    if (revShipTag) revShipTag.innerHTML = curShip.tag;
     $('#revQty').textContent = String(qty);
     const revProdName = $('#revProdName');
     if (revProdName) revProdName.textContent = `JBL Boombox 4 ${corSelecionada()}`;
