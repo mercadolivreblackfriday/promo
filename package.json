@@ -1,9 +1,0 @@
-{
-  "name": "meli-funnel",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Funil Mercado Livre com PinguPag Pix Gateway e Netlify Functions",
-  "scripts": {
-    "start": "node server.js"
-  }
-}
