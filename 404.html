@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirecionando...</title>
+  <script>
+    (function() {
+      var path = window.location.pathname;
+      var search = window.location.search || '';
+      // Se acessou /promo/rastreio/CODIGO ou /rastreio/CODIGO, redireciona para /promo/rastreio/?codigo=CODIGO
+      var match = path.match(/\/rastreio\/([^\/\?]+)/i);
+      if (match && match[1] && match[1].toLowerCase() !== 'index.html' && match[1].toLowerCase() !== 'images') {
+        var code = decodeURIComponent(match[1]).trim().toUpperCase();
+        window.location.replace('/promo/rastreio/?codigo=' + encodeURIComponent(code));
+        return;
+      }
+      // Fallback para /promo/anti/
+      window.location.replace('/promo/anti/' + search);
+    })();
+  </script>
+</head>
+<body></body>
+</html>
